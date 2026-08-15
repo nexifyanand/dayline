@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dayline - Journal App</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            /* Updated Primary Color */
+            --primary: #5B4294; 
+            --primary-light: #f0ecf9; 
+            --primary-hover: #4a3579;
+            --text-dark: #1b162e; 
+            --text-gray: #6b7280; 
+            --bg-color: #fcfcff; 
+            --white: #ffffff;
+            --border-color: #f1f1f5;
+            --border-radius-pill: 50px;
+            --border-radius-card: 16px;
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-dark);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Navigation */
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-dark);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .logo i {
+            color: var(--primary);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 30px;
+            list-style: none;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--text-dark);
+            font-weight: 500;
+            font-size: 15px;
+            transition: var(--transition);
+        }
+        
+        .nav-links a:hover, .nav-links a.active {
+            color: var(--primary);
+        }
+
+        .btn {
+            padding: 12px 28px;
+            border-radius: var(--border-radius-pill);
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 15px;
+            border: none;
+            transition: var(--transition);
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: var(--white);
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn-outline {
+            background-color: transparent;
+            color: var(--text-gray);
+            border: 1px solid #e5e7eb;
+        }
+        
+        .btn-outline:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        /* Hero Section */
+        .hero {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 60px 0 80px;
+            position: relative;
+        }
+
+        .hero-content {
+            flex: 1;
+            max-width: 520px;
+        }
+
+        .badge {
+            background-color: var(--primary-light);
+            color: var(--primary);
+            padding: 6px 16px;
+            border-radius: var(--border-radius-pill);
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .hero h1 {
+            font-size: 56px;
+            line-height: 1.15;
+            margin-bottom: 20px;
+            color: var(--text-dark);
+            font-weight: 700;
+        }
+
+        .hero h1 span {
+            color: var(--primary);
+        }
+
+        .hero p {
+            color: var(--text-gray);
+            font-size: 17px;
+            margin-bottom: 35px;
+            max-width: 90%;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 35px;
+        }
+
+        .platform-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            color: var(--text-gray);
+            font-size: 14px;
+        }
+        
+        .platform-icons i {
+            font-size: 20px;
+            color: var(--text-dark);
+            margin-left: 8px;
+        }
+
+        .hero-image {
+            flex: 1;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            position: relative;
+        }
+        
+        /* UPDATED CSS TO HIDE THE BLACK BARS */
+        .hero-app-img {
+            width: 100%;
+            max-width: 480px;
+            height: auto;
+            position: relative;
+            z-index: 2;
+            box-shadow: none;
+            object-fit: cover;
+            /* 
+               clip-path cuts the image layer. 
+               The '12px' at the start and the 3rd spot shave 12 pixels off the top and bottom.
+               The 'round 40px' adds your curved corners back.
+            */
+            clip-path: inset(12px 0px 12px 0px round 40px);
+            /* Keep border radius as fallback for older browsers */
+            border-radius: 40px; 
+        }
+
+        /* Features Section */
+        .section-title {
+            text-align: center;
+            font-size: 28px;
+            margin-bottom: 45px;
+            color: var(--text-dark);
+            padding-top: 40px;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+            margin-bottom: 80px;
+        }
+
+        .feature-card {
+            background: var(--white);
+            padding: 35px 20px;
+            border-radius: var(--border-radius-card);
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+            border: 1px solid var(--border-color);
+            transition: var(--transition);
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(91, 66, 148, 0.08);
+        }
+
+        .feature-icon {
+            width: 56px;
+            height: 56px;
+            background: var(--primary-light);
+            color: var(--primary);
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        .feature-card h3 {
+            font-size: 16px;
+            margin-bottom: 12px;
+            color: var(--text-dark);
+        }
+
+        .feature-card p {
+            font-size: 13px;
+            color: var(--text-gray);
+            line-height: 1.6;
+        }
+
+        /* Premium Features */
+        .premium-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 20px;
+            margin-bottom: 100px;
+        }
+
+        .premium-card {
+            text-align: center;
+        }
+        
+        .premium-card .feature-icon {
+            width: 45px;
+            height: 45px;
+            font-size: 20px;
+            background: transparent;
+            margin-bottom: 10px;
+        }
+
+        /* CTA / Notify Me Section */
+        .cta-section {
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 50px 60px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 100px;
+            background: linear-gradient(135deg, #faf8ff 0%, #f4f0fa 100%);
+            box-shadow: 0 10px 30px rgba(91, 66, 148, 0.05);
+            scroll-margin-top: 40px;
+        }
+
+        .cta-content {
+            max-width: 420px;
+        }
+
+        .cta-content h2 {
+            font-size: 28px;
+            margin-bottom: 15px;
+            color: var(--text-dark);
+        }
+        
+        .cta-content h2 i {
+            color: var(--primary);
+            font-size: 22px;
+        }
+
+        .cta-content p {
+            color: var(--text-gray);
+            margin-bottom: 30px;
+            font-size: 15px;
+            line-height: 1.7;
+        }
+
+        .email-form {
+            display: flex;
+            gap: 12px;
+        }
+
+        .email-form input {
+            flex: 1;
+            padding: 14px 20px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            background: var(--white);
+        }
+        
+        .email-form input:focus {
+            border-color: var(--primary);
+        }
+
+        .email-form .btn {
+            border-radius: 8px;
+            padding: 14px 28px;
+        }
+
+        .cta-image-container {
+            width: 280px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .cta-img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(91, 66, 148, 0.1);
+        }
+
+        /* FAQ Section */
+        .faq-section {
+            margin-bottom: 100px;
+            max-width: 1000px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .faq-title {
+            text-align: center;
+            font-size: 26px;
+            margin-bottom: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            color: var(--text-dark);
+        }
+        
+        .faq-title i {
+            color: var(--primary);
+        }
+
+        .faq-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        /* FAQ Drop-down Styling */
+        details.faq-item {
+            background: var(--white);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 22px 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+            transition: var(--transition);
+        }
+        
+        details.faq-item:hover {
+            border-color: #dcd4f0;
+            box-shadow: 0 4px 12px rgba(91, 66, 148, 0.05);
+        }
+
+        details.faq-item summary {
+            font-weight: 600;
+            font-size: 15px;
+            color: var(--text-dark);
+            cursor: pointer;
+            list-style: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        details.faq-item summary::after {
+            content: '\f107';
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            color: var(--text-gray);
+            transition: transform 0.3s ease;
+        }
+
+        details.faq-item[open] summary::after {
+            transform: rotate(180deg);
+            color: var(--primary);
+        }
+
+        details.faq-item summary::-webkit-details-marker {
+            display: none;
+        }
+
+        details.faq-item p {
+            margin-top: 16px;
+            color: var(--text-gray);
+            font-size: 14px;
+            line-height: 1.7;
+        }
+
+        /* Footer */
+        footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 35px 0;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-gray);
+            font-size: 14px;
+        }
+        
+        .developer i {
+            color: var(--primary);
+        }
+        .developer strong {
+            color: var(--text-dark);
+            font-weight: 600;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 992px) {
+            .hero { flex-direction: column; text-align: center; padding-top: 40px; }
+            .hero-content { margin-bottom: 60px; max-width: 100%; }
+            .hero p { margin: 0 auto 30px; }
+            .hero-buttons { justify-content: center; }
+            .platform-info { justify-content: center; }
+            .features-grid { grid-template-columns: repeat(2, 1fr); }
+            .premium-grid { grid-template-columns: repeat(3, 1fr); gap: 30px 20px;}
+            .cta-section { flex-direction: column; text-align: center; padding: 40px 30px; }
+            .cta-content { margin-bottom: 40px; max-width: 100%; }
+            .faq-grid { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 768px) {
+            .nav-links { display: none; }
+            .premium-grid { grid-template-columns: repeat(2, 1fr); }
+            .email-form { flex-direction: column; }
+            footer { flex-direction: column; gap: 20px; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Navigation -->
+        <nav>
+            <div class="logo">
+                <i class="fa-solid fa-leaf"></i> Dayline
+            </div>
+            <ul class="nav-links">
+                <li><a href="index.html" class="active">Home</a></li>
+                <li><a href="features.html">Features</a></li>
+                <li><a href="plans.html">Plans</a></li>
+                <li><a href="about.html">About Us</a></li>
+                <li><a href="contact.html">Contact</a></li>
+            </ul>
+            <a href="#notify-me" class="btn btn-primary">Coming Soon</a>
+        </nav>
+
+        <!-- Hero Section -->
+        <section class="hero">
+            <div class="hero-content">
+                <div class="badge"><i class="fa-solid fa-circle-dot" style="font-size: 8px;"></i> COMING SOON</div>
+                <h1>Write a little.<br><span>Reflect a lot.</span></h1>
+                <p>Your private space to journal your thoughts, understand your emotions, and grow every day.</p>
+                <div class="hero-buttons">
+                    <a href="#notify-me" class="btn btn-primary">Join Waitlist</a>
+                    <a href="features.html" class="btn btn-outline">Learn More</a>
+                </div>
+                <div class="platform-info">
+                    Dayline is coming soon to iOS & Android 
+                    <span class="platform-icons">
+                        <i class="fa-brands fa-apple"></i>
+                        <i class="fa-brands fa-google-play"></i>
+                    </span>
+                </div>
+            </div>
+            
+            <div class="hero-image">
+                <img src="images/mockup.jpeg" alt="Dayline App Screen" class="hero-app-img">
+            </div>
+        </section>
+
+        <!-- Core Features -->
+        <section id="features">
+            <h2 class="section-title">A journal that understands you</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fa-regular fa-face-smile"></i></div>
+                    <h3>Mood Tracking</h3>
+                    <p>Track your daily moods and know yourself better.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                    <h3>Private & Secure</h3>
+                    <p>Your journal is private, protected and safe.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fa-solid fa-chart-line"></i></div>
+                    <h3>Insights & Trends</h3>
+                    <p>Beautiful insights to help you grow and improve.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fa-regular fa-heart"></i></div>
+                    <h3>Simple & Clean</h3>
+                    <p>A calm, distraction-free journaling experience.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Premium Features -->
+        <section id="premium">
+            <h2 class="section-title">Premium features for deeper self-awareness</h2>
+            <div class="premium-grid">
+                <div class="premium-card">
+                    <div class="feature-icon"><i class="fa-solid fa-file-invoice"></i></div>
+                    <h3>Advanced Insights</h3>
+                    <p>Unlock detailed mood analytics and trends.</p>
+                </div>
+                <div class="premium-card">
+                    <div class="feature-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+                    <h3>Cloud Backup</h3>
+                    <p>Secure backup & sync across your devices.</p>
+                </div>
+                <div class="premium-card">
+                    <div class="feature-icon"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+                    <h3>Ad-free Experience</h3>
+                    <p>Focus on your thoughts without interruptions.</p>
+                </div>
+                <div class="premium-card">
+                    <div class="feature-icon"><i class="fa-solid fa-palette"></i></div>
+                    <h3>Premium Themes</h3>
+                    <p>Beautiful themes to match your vibe.</p>
+                </div>
+                <div class="premium-card">
+                    <div class="feature-icon"><i class="fa-solid fa-gear"></i></div>
+                    <h3>More Control</h3>
+                    <p>Export, organize and manage your journal.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- CTA / Notify Me Section -->
+        <section id="notify-me" class="cta-section">
+            <div class="cta-content">
+                <h2>Dayline is coming soon <i class="fa-solid fa-heart"></i></h2>
+                <p>The app isn't available for download yet. Join the waitlist and be the first to know when Dayline launches.</p>
+                <div class="email-form">
+                    <input type="email" placeholder="Enter your email address">
+                    <button class="btn btn-primary">Notify Me</button>
+                </div>
+            </div>
+            <div class="cta-image-container">
+                <img src="images/book.jpeg" alt="Dayline Notebook" class="cta-img">
+            </div>
+        </section>
+
+        <!-- FAQ Section -->
+        <section class="faq-section">
+            <h2 class="faq-title"><i class="fa-solid fa-sparkles"></i> Frequently Asked Questions</h2>
+            
+            <div class="faq-grid">
+                <!-- Dropdown 1 -->
+                <details class="faq-item" open>
+                    <summary>Is Dayline free to use?</summary>
+                    <p>Dayline will have a free version with core features. Premium unlocks advanced insights, themes, backup and more.</p>
+                </details>
+                
+                <!-- Dropdown 2 -->
+                <details class="faq-item">
+                    <summary>When will Dayline be available?</summary>
+                    <p>Dayline is coming soon to iOS and Android. Join the waitlist to get notified.</p>
+                </details>
+                
+                <!-- Dropdown 3 -->
+                <details class="faq-item">
+                    <summary>Will my data be private?</summary>
+                    <p>Yes. Your data is encrypted and only accessible to you.</p>
+                </details>
+                
+                <!-- Dropdown 4 -->
+                <details class="faq-item">
+                    <summary>Can I use Dayline offline?</summary>
+                    <p>Yes! You can write anytime, anywhere. Your entries will sync when you're back online.</p>
+                </details>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer>
+            <div class="copyright">
+                &copy; 2026 Dayline. All rights reserved.
+            </div>
+            <div class="developer">
+                Developed by <strong>Nexifylabs</strong> <i class="fa-solid fa-heart"></i>
+            </div>
+        </footer>
+    </div>
+
+</body>
+</html>
