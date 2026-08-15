@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dayline - Features</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            /* Primary Brand Colors */
+            --primary: #5B4294; 
+            --primary-light: #f0ecf9; 
+            --primary-hover: #4a3579;
+            --text-dark: #1b162e; 
+            --text-gray: #6b7280; 
+            --bg-color: #fcfcff; 
+            --white: #ffffff;
+            --border-color: #f1f1f5;
+            --border-radius-pill: 50px;
+            --border-radius-card: 20px;
+            --transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-dark);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Navigation */
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-dark);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+        
+        .logo i {
+            color: var(--primary);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 30px;
+            list-style: none;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--text-dark);
+            font-weight: 500;
+            font-size: 15px;
+            transition: var(--transition);
+            padding-bottom: 4px;
+        }
+        
+        .nav-links a:hover {
+            color: var(--primary);
+        }
+
+        .nav-links a.active {
+            color: var(--primary);
+            border-bottom: 2px solid var(--primary);
+        }
+
+        .btn {
+            padding: 12px 28px;
+            border-radius: var(--border-radius-pill);
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 15px;
+            border: none;
+            transition: var(--transition);
+            text-align: center;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: var(--white);
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(91, 66, 148, 0.2);
+        }
+
+        /* Hero Section */
+        .hero {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 60px 0 80px;
+            position: relative;
+        }
+
+        .hero-content {
+            flex: 1;
+            max-width: 580px;
+            text-align: center;
+            margin: 0 auto;
+        }
+
+        .badge {
+            background-color: var(--primary-light);
+            color: var(--primary);
+            padding: 6px 16px;
+            border-radius: var(--border-radius-pill);
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 25px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .hero h1 {
+            font-size: 48px;
+            line-height: 1.2;
+            margin-bottom: 20px;
+            color: var(--text-dark);
+            font-weight: 700;
+        }
+
+        .hero h1 span {
+            color: var(--primary);
+        }
+
+        .hero p {
+            color: var(--text-gray);
+            font-size: 17px;
+            margin-bottom: 35px;
+            max-width: 90%;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .hero-image {
+            flex: 1;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            position: relative;
+        }
+        
+        .hero-app-img {
+            width: 100%;
+            max-width: 440px;
+            height: auto;
+            position: relative;
+            z-index: 2;
+            clip-path: inset(12px 0px 12px 0px round 40px);
+        }
+
+        /* Section Titles */
+        .section-header {
+            text-align: center;
+            margin-bottom: 50px;
+            padding-top: 40px;
+        }
+
+        .section-header h2 {
+            font-size: 28px;
+            color: var(--text-dark);
+            margin-top: 15px;
+        }
+
+        /* Redesigned Core Features Grid (No Images) */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+            margin-bottom: 100px;
+        }
+
+        .feature-card {
+            background: var(--white);
+            padding: 40px 25px;
+            border-radius: var(--border-radius-card);
+            text-align: center;
+            border: 1px solid var(--border-color);
+            transition: var(--transition);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        /* Subtle glow effect on hover */
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 4px;
+            background: linear-gradient(90deg, var(--primary-light), var(--primary));
+            opacity: 0;
+            transition: var(--transition);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 35px rgba(91, 66, 148, 0.08);
+            border-color: #eae5f5;
+        }
+
+        .feature-card:hover::before {
+            opacity: 1;
+        }
+
+        /* Enhanced Icon styling */
+        .feature-icon {
+            width: 68px;
+            height: 68px;
+            background: linear-gradient(135deg, var(--primary-light) 0%, #e2dafb 100%);
+            color: var(--primary);
+            border-radius: 18px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            margin-bottom: 25px;
+            transition: var(--transition);
+        }
+        
+        .feature-card:hover .feature-icon {
+            transform: scale(1.1);
+            background: var(--primary);
+            color: var(--white);
+            box-shadow: 0 8px 20px rgba(91, 66, 148, 0.2);
+        }
+
+        .feature-card h3 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: var(--text-dark);
+            font-weight: 600;
+        }
+
+        .feature-card p {
+            font-size: 14px;
+            color: var(--text-gray);
+            line-height: 1.7;
+            margin-bottom: 0;
+        }
+
+        /* Redesigned Premium Banner (CSS Icon instead of image) */
+        .premium-banner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: linear-gradient(135deg, #f7f5ff 0%, #ede8fa 100%);
+            border: 1px solid #e5dfff;
+            padding: 40px 50px;
+            border-radius: 24px;
+            margin-bottom: 100px;
+            box-shadow: 0 15px 35px rgba(91, 66, 148, 0.05);
+        }
+
+        .premium-banner-left {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+        }
+
+        /* Pure CSS glowing Gem icon */
+        .premium-icon-large {
+            width: 80px;
+            height: 80px;
+            min-width: 80px;
+            background: linear-gradient(135deg, var(--primary) 0%, #7e5cc5 100%);
+            color: white;
+            border-radius: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            box-shadow: 0 10px 25px rgba(91, 66, 148, 0.25);
+        }
+
+        .premium-banner-text h3 {
+            color: var(--primary);
+            font-size: 24px;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .premium-banner-text p {
+            color: var(--text-gray);
+            font-size: 15px;
+            max-width: 500px;
+        }
+
+        /* Other Features Grid */
+        .other-features-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 15px;
+            margin-bottom: 100px;
+        }
+
+        .other-feature-card {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+            background: var(--white);
+            border: 1px solid var(--border-color);
+            padding: 24px 20px;
+            border-radius: 16px;
+            transition: var(--transition);
+        }
+
+        .other-feature-card:hover {
+            border-color: #dcd4f0;
+            box-shadow: 0 8px 20px rgba(91, 66, 148, 0.06);
+            transform: translateY(-3px);
+        }
+
+        .other-feature-card .icon-box {
+            color: var(--primary);
+            background: var(--primary-light);
+            min-width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            transition: var(--transition);
+        }
+        
+        .other-feature-card:hover .icon-box {
+            background: var(--primary);
+            color: white;
+        }
+
+        .other-feature-card h4 {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 6px;
+            margin-top: 5px;
+        }
+
+        .other-feature-card p {
+            font-size: 12px;
+            color: var(--text-gray);
+            line-height: 1.6;
+        }
+
+        /* CTA / Notify Me Section */
+        .cta-section {
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 50px 60px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 100px;
+            background: linear-gradient(135deg, #faf8ff 0%, #f4f0fa 100%);
+            box-shadow: 0 10px 30px rgba(91, 66, 148, 0.05);
+            scroll-margin-top: 40px;
+        }
+
+        .cta-content {
+            max-width: 420px;
+        }
+
+        .cta-content h2 {
+            font-size: 28px;
+            margin-bottom: 15px;
+            color: var(--text-dark);
+        }
+        
+        .cta-content h2 i {
+            color: var(--primary);
+            font-size: 22px;
+        }
+
+        .cta-content p {
+            color: var(--text-gray);
+            margin-bottom: 30px;
+            font-size: 15px;
+            line-height: 1.7;
+        }
+
+        .email-form {
+            display: flex;
+            gap: 12px;
+        }
+
+        .email-form input {
+            flex: 1;
+            padding: 14px 20px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            background: var(--white);
+            transition: var(--transition);
+        }
+        
+        .email-form input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(91, 66, 148, 0.1);
+        }
+
+        .email-form .btn {
+            border-radius: 8px;
+            padding: 14px 28px;
+        }
+
+        .cta-image-container {
+            width: 280px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .cta-img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 12px;
+            box-shadow: 0 15px 35px rgba(91, 66, 148, 0.15);
+        }
+
+        /* Footer */
+        footer {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            padding: 35px 0;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-gray);
+            font-size: 14px;
+        }
+        
+        .developer {
+            text-align: center;
+        }
+        
+        .developer i {
+            color: var(--primary);
+        }
+        .developer strong {
+            color: var(--text-dark);
+            font-weight: 600;
+        }
+
+        .social-links {
+            display: flex;
+            justify-content: flex-end;
+            gap: 20px;
+        }
+
+        .social-links a {
+            color: var(--text-gray);
+            font-size: 18px;
+            transition: var(--transition);
+        }
+
+        .social-links a:hover {
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1100px) {
+            .other-features-grid { grid-template-columns: repeat(3, 1fr); }
+            .features-grid { grid-template-columns: repeat(2, 1fr); gap: 20px; }
+        }
+        
+        @media (max-width: 992px) {
+            .hero { flex-direction: column; text-align: center; padding-top: 40px; }
+            .hero-content { margin-bottom: 60px; max-width: 100%; }
+            .premium-banner { flex-direction: column; text-align: center; gap: 30px; padding: 40px 30px; }
+            .premium-banner-left { flex-direction: column; gap: 20px; }
+            .cta-section { flex-direction: column; text-align: center; padding: 40px 30px; gap: 40px;}
+            .cta-content { margin-bottom: 0; max-width: 100%; }
+            footer { grid-template-columns: 1fr; gap: 20px; text-align: center; }
+            .social-links { justify-content: center; }
+        }
+        
+        @media (max-width: 768px) {
+            .nav-links { display: none; }
+            .other-features-grid { grid-template-columns: repeat(2, 1fr); }
+            .email-form { flex-direction: column; }
+        }
+        
+        @media (max-width: 500px) {
+            .features-grid { grid-template-columns: 1fr; }
+            .other-features-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Navigation -->
+        <nav>
+            <a href="index.html" class="logo">
+                <i class="fa-solid fa-leaf"></i> Dayline
+            </a>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="features.html" class="active">Features</a></li>
+                <li><a href="plans.html">Plans</a></li>
+                <li><a href="about.html">About Us</a></li>
+                <li><a href="contact.html">Contact</a></li>
+            </ul>
+            <a href="#notify-me" class="btn btn-primary">Coming Soon</a>
+        </nav>
+
+        <!-- Hero Section -->
+        <section class="hero">
+            <div class="hero-content">
+                <div class="badge">FEATURES</div>
+                <h1>Everything you need to<br>understand yourself better <span><i class="fa-solid fa-heart"></i></span></h1>
+                <p>Dayline is more than just a journal. It's your daily space to reflect, track your mood, build positive habits, and grow into the best version of yourself.</p>
+            </div>
+            
+            <div class="hero-image">
+                <!-- Using your actual phone mockup image -->
+                <img src="images/logomodi.jpeg" alt="Dayline App Screen" class="hero-app-img">
+            </div>
+        </section>
+
+        <!-- Core Features Title -->
+        <div class="section-header">
+            <div class="badge">CORE FEATURES</div>
+            <h2>Powerful features for everyday journaling</h2>
+        </div>
+
+        <!-- Redesigned Core Features Grid (No Images, Rich CSS) -->
+        <section class="features-grid">
+            
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fa-regular fa-face-smile"></i></div>
+                <h3>Mood Tracking</h3>
+                <p>Track your daily moods with beautiful emojis and gain insights into your emotional patterns over time.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fa-solid fa-pen-nib"></i></div>
+                <h3>Daily Journaling</h3>
+                <p>Write freely and express your thoughts. A simple, calm space to reflect and organize your mind every day.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fa-solid fa-chart-pie"></i></div>
+                <h3>Insights & Trends</h3>
+                <p>Visualize your mood patterns, streaks, and journaling habits with easy-to-understand charts and statistics.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fa-solid fa-fire-flame-curved"></i></div>
+                <h3>Streaks & Habits</h3>
+                <p>Build consistency with daily streaks and stay motivated to never miss your journaling routine.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                <h3>Private & Secure</h3>
+                <p>Your journal is 100% private. We prioritize your data security and keep your thoughts safe from prying eyes.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+                <h3>Cloud Sync</h3>
+                <p>Access your journal from any device. Your entries are safely backed up to the cloud and always in sync.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fa-solid fa-palette"></i></div>
+                <h3>Beautiful Themes</h3>
+                <p>Choose from a variety of soothing themes and colors that perfectly match your mood and personal style.</p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fa-regular fa-bell"></i></div>
+                <h3>Smart Reminders</h3>
+                <p>Set personalized daily reminders so you never miss a single moment to reflect, write and grow.</p>
+            </div>
+
+        </section>
+
+        <!-- Redesigned Premium Banner (CSS Icon) -->
+        <section class="premium-banner">
+            <div class="premium-banner-left">
+                <!-- Large CSS styled Gem Icon instead of an image -->
+                <div class="premium-icon-large">
+                    <i class="fa-regular fa-gem"></i>
+                </div>
+                <div class="premium-banner-text">
+                    <h3>Unlock the full potential with Premium</h3>
+                    <p>Go beyond the basics and enjoy powerful tools designed for deeper self-awareness and personal growth.</p>
+                </div>
+            </div>
+            <a href="plans.html" class="btn btn-primary"><i class="fa-solid fa-crown"></i> View Plans</a>
+        </section>
+
+        <!-- Other Features Title -->
+        <div class="section-header" style="margin-bottom: 40px; padding-top: 0;">
+            <div class="badge">OTHER FEATURES</div>
+            <h2>More tools to support your journey</h2>
+        </div>
+
+        <!-- Other Features Grid -->
+        <section class="other-features-grid">
+            
+            <div class="other-feature-card">
+                <div class="icon-box"><i class="fa-solid fa-eye-slash"></i></div>
+                <div class="other-feature-text">
+                    <h4>Ad-free Experience</h4>
+                    <p>Focus without distractions.</p>
+                </div>
+            </div>
+
+            <div class="other-feature-card">
+                <div class="icon-box"><i class="fa-solid fa-file-export"></i></div>
+                <div class="other-feature-text">
+                    <h4>Export Journal</h4>
+                    <p>Export your entries anytime.</p>
+                </div>
+            </div>
+
+            <div class="other-feature-card">
+                <div class="icon-box"><i class="fa-solid fa-lock"></i></div>
+                <div class="other-feature-text">
+                    <h4>PIN / App Lock</h4>
+                    <p>Lock your journal for privacy.</p>
+                </div>
+            </div>
+
+            <div class="other-feature-card">
+                <div class="icon-box"><i class="fa-solid fa-magnifying-glass"></i></div>
+                <div class="other-feature-text">
+                    <h4>Search Entries</h4>
+                    <p>Find any memory in seconds.</p>
+                </div>
+            </div>
+
+            <div class="other-feature-card">
+                <div class="icon-box"><i class="fa-regular fa-calendar-days"></i></div>
+                <div class="other-feature-text">
+                    <h4>Calendar View</h4>
+                    <p>View entries in a calendar.</p>
+                </div>
+            </div>
+
+            <div class="other-feature-card">
+                <div class="icon-box"><i class="fa-solid fa-mobile-screen"></i></div>
+                <div class="other-feature-text">
+                    <h4>Multi-device</h4>
+                    <p>Use on phone, tablet & more.</p>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- CTA / Notify Me Section -->
+        <section id="notify-me" class="cta-section">
+            <div class="cta-content">
+                <h2>Dayline is coming soon <i class="fa-solid fa-heart"></i></h2>
+                <p>The app isn't available for download yet. Join the waitlist and be the first to know when Dayline launches.</p>
+                <div class="email-form">
+                    <input type="email" placeholder="Enter your email address" required>
+                    <button type="submit" class="btn btn-primary">Notify Me</button>
+                </div>
+            </div>
+            <div class="cta-image-container">
+                <!-- Using your actual notebook image -->
+                <img src="images/book2.jpeg" alt="Dayline Notebook" class="cta-img">
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer>
+            <div class="copyright">
+                &copy; 2026 Dayline. All rights reserved.
+            </div>
+            <div class="developer">
+                Developed by <strong>Nexifylabs</strong> <i class="fa-solid fa-heart"></i>
+            </div>
+            <div class="social-links">
+                <a href="#"><i class="fa-brands fa-instagram"></i></a>
+                <a href="#"><i class="fa-brands fa-x-twitter"></i></a>
+                <a href="#"><i class="fa-solid fa-envelope"></i></a>
+            </div>
+        </footer>
+    </div>
+
+</body>
+</html>

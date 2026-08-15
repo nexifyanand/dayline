@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dayline - Write a little. Reflect a lot.</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6345ED;
+            --primary-hover: #5035D1;
+            --primary-light: #F4F1FF;
+            --text-dark: #1A1A24;
+            --text-gray: #6B6B7B;
+            --bg-body: #FFFFFF;
+            --border-color: #EAEAEA;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        html { scroll-behavior: smooth; }
+        body { background-color: var(--bg-body); color: var(--text-dark); -webkit-font-smoothing: antialiased; }
+        .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+        section { padding: 80px 0; }
+        .section-title { text-align: center; font-size: 28px; font-weight: 700; margin-bottom: 12px; color: var(--text-dark); }
+        .section-subtitle { text-align: center; font-size: 15px; color: var(--text-gray); margin-bottom: 48px; }
+
+        /* Navigation */
+        nav { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; background: white; position: sticky; top: 0; z-index: 100; border-bottom: 1px solid var(--border-color); }
+        .logo { display: flex; align-items: center; gap: 8px; font-size: 20px; font-weight: 700; color: var(--text-dark); text-decoration: none; }
+        .logo-icon { color: var(--primary); font-size: 24px; }
+        .nav-links { display: flex; gap: 32px; }
+        .nav-links a { text-decoration: none; color: var(--text-gray); font-size: 14px; font-weight: 500; transition: color 0.2s; }
+        .nav-links a:hover, .nav-links a.active { color: var(--primary); }
+        .btn-coming-soon { background-color: var(--primary); color: white; padding: 10px 20px; border-radius: 20px; text-decoration: none; font-size: 14px; font-weight: 600; }
+
+        /* Plans & Pricing */
+        .plans-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 60px; }
+        .plan-card { border: 1px solid var(--border-color); border-radius: 20px; padding: 40px 30px; text-align: center; position: relative; background: white; transition: 0.3s; }
+        .plan-card:hover { border-color: var(--primary); box-shadow: 0 10px 30px rgba(99,69,237,0.1); }
+        .plan-card.popular { border: 2px solid var(--primary); }
+        .badge-best-value { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: var(--primary); color: white; font-size: 11px; font-weight: 700; padding: 6px 12px; border-radius: 20px; letter-spacing: 0.5px; }
+        .plan-icon { font-size: 32px; color: var(--primary); margin-bottom: 16px; }
+        .plan-name { font-size: 18px; font-weight: 600; margin-bottom: 16px; }
+        .plan-price { font-size: 42px; font-weight: 700; margin-bottom: 4px; display: flex; justify-content: center; align-items: flex-start; }
+        .plan-price span { font-size: 20px; margin-top: 6px; }
+        .plan-desc { font-size: 13px; color: var(--text-gray); margin-bottom: 32px; }
+        .plan-features { text-align: left; list-style: none; margin-bottom: 32px; }
+        .plan-features li { font-size: 14px; margin-bottom: 12px; display: flex; align-items: center; gap: 10px; color: var(--text-dark); }
+        .plan-features li::before { content: '✓'; color: var(--primary); font-weight: bold; background: var(--primary-light); width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 12px; }
+        .btn-plan { display: block; width: 100%; padding: 14px; border-radius: 12px; font-size: 15px; font-weight: 600; text-decoration: none; text-align: center; border: 1px solid var(--primary); color: var(--primary); }
+        .plan-card.popular .btn-plan { background: var(--primary); color: white; }
+
+        /* Compare Table */
+        .compare-section { margin-top: 80px; }
+        .compare-table { width: 100%; border-collapse: collapse; margin-top: 32px; }
+        .compare-table th, .compare-table td { padding: 16px 20px; text-align: center; border-bottom: 1px solid var(--border-color); font-size: 14px; }
+        .compare-table th { font-weight: 600; color: var(--text-dark); }
+        .compare-table td:first-child, .compare-table th:first-child { text-align: left; font-weight: 500; color: var(--text-dark); }
+        .compare-table tr:last-child td { border-bottom: none; }
+        .check { color: var(--text-dark); font-weight: bold; }
+        .dash { color: var(--text-gray); }
+        .payment-note { text-align: center; font-size: 12px; color: var(--text-gray); margin-top: 16px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+
+        /* About Us */
+        .about-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 60px; }
+        .about-text { max-width: 500px; }
+        .about-text h4 { color: var(--primary); font-size: 12px; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 1px; }
+        .about-text h2 { font-size: 32px; font-weight: 700; margin-bottom: 24px; }
+        .about-text p { font-size: 15px; color: var(--text-gray); line-height: 1.6; margin-bottom: 16px; }
+        .about-image { width: 400px; height: auto; }
+        .about-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 40px; }
+        .about-card { padding: 24px; border: 1px solid var(--border-color); border-radius: 16px; }
+        .about-card .icon { color: var(--primary); font-size: 24px; margin-bottom: 16px; }
+        .about-card h3 { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+        .about-card p { font-size: 13px; color: var(--text-gray); line-height: 1.5; }
+        .developer-card { background: var(--primary-light); padding: 32px; border-radius: 16px; display: flex; justify-content: space-between; align-items: center; }
+        .developer-card h3 { font-size: 18px; color: var(--primary); margin-bottom: 8px; }
+        .developer-card p { font-size: 14px; color: var(--text-gray); max-width: 400px; }
+
+        /* Contact Us */
+        .contact-section { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; }
+        .contact-info h4 { color: var(--primary); font-size: 12px; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; }
+        .contact-info h2 { font-size: 32px; font-weight: 700; margin-bottom: 16px; }
+        .contact-info > p { font-size: 15px; color: var(--text-gray); margin-bottom: 40px; max-width: 350px; }
+        .contact-method { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 24px; }
+        .contact-icon { background: var(--primary-light); color: var(--primary); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+        .contact-method div p:first-child { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+        .contact-method div p:last-child { font-size: 14px; color: var(--text-gray); }
+        .contact-form { background: white; padding: 40px; border-radius: 20px; border: 1px solid var(--border-color); box-shadow: 0 10px 40px rgba(0,0,0,0.03); }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+        .contact-form input, .contact-form textarea { width: 100%; padding: 14px 16px; border: 1px solid var(--border-color); border-radius: 12px; font-size: 14px; outline: none; transition: border 0.2s; }
+        .contact-form input:focus, .contact-form textarea:focus { border-color: var(--primary); }
+        .contact-form textarea { height: 120px; resize: none; margin-bottom: 16px; }
+        .btn-submit { width: 100%; background: var(--primary); color: white; padding: 14px; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 8px; }
+
+        /* Footer */
+        footer { padding: 40px 0; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: var(--text-gray); }
+        .footer-links a { color: var(--text-gray); text-decoration: none; margin-left: 24px; }
+        .footer-links a:hover { color: var(--primary); }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Navbar -->
+        <nav>
+            <a href="#" class="logo"><span class="logo-icon">🪶</span> Dayline <span style="font-size:14px;">💜</span></a>
+            <div class="nav-links">
+                <a href="#home">Home</a>
+                <a href="#features">Features</a>
+                <a href="#plans" class="active">Plans</a>
+                <a href="#about">About Us</a>
+                <a href="#contact">Contact</a>
+            </div>
+            <a href="#" class="btn-coming-soon">Coming Soon</a>
+        </nav>
+
+        <!-- Plans & Pricing Section -->
+        <section id="plans">
+            <h4 style="text-align:center; color:var(--primary); font-size:12px; font-weight:700; margin-bottom:8px; letter-spacing:1px;">PLANS & PRICING</h4>
+            <h2 class="section-title">Choose the plan that's right for you</h2>
+            <p class="section-subtitle">One-time payment. No auto renewal.</p>
+
+            <div class="plans-grid">
+                <!-- Monthly -->
+                <div class="plan-card">
+                    <div class="plan-icon">📅</div>
+                    <div class="plan-name">Monthly</div>
+                    <div class="plan-price"><span>₹</span>49</div>
+                    <div class="plan-desc">one-time<br>Full access for 30 days</div>
+                    <ul class="plan-features">
+                        <li>All premium features</li>
+                        <li>Mood insights & trends</li>
+                        <li>Ad-free experience</li>
+                        <li>Cloud backup & sync</li>
+                        <li>Secure your journal</li>
+                    </ul>
+                    <a href="#" class="btn-plan">Get Monthly</a>
+                </div>
+
+                <!-- Yearly -->
+                <div class="plan-card popular">
+                    <div class="badge-best-value">BEST VALUE</div>
+                    <div class="plan-icon">🗓️</div>
+                    <div class="plan-name">Yearly</div>
+                    <div class="plan-price"><span>₹</span>299</div>
+                    <div class="plan-desc">one-time<br>Full access for 1 year</div>
+                    <ul class="plan-features">
+                        <li>All premium features</li>
+                        <li>Mood insights & trends</li>
+                        <li>Ad-free experience</li>
+                        <li>Cloud backup & sync</li>
+                        <li>Secure your journal</li>
+                    </ul>
+                    <a href="#" class="btn-plan">Get Yearly</a>
+                </div>
+
+                <!-- Lifetime -->
+                <div class="plan-card">
+                    <div class="plan-icon">💎</div>
+                    <div class="plan-name">Lifetime</div>
+                    <div class="plan-price"><span>₹</span>799</div>
+                    <div class="plan-desc">one-time<br>Full access forever</div>
+                    <ul class="plan-features">
+                        <li>All premium features</li>
+                        <li>Mood insights & trends</li>
+                        <li>Ad-free experience</li>
+                        <li>Cloud backup & sync</li>
+                        <li>Secure your journal</li>
+                    </ul>
+                    <a href="#" class="btn-plan">Get Lifetime</a>
+                </div>
+            </div>
+
+            <!-- Compare Table -->
+            <div class="compare-section">
+                <h2 class="section-title">Compare Plans</h2>
+                <table class="compare-table">
+                    <thead>
+                        <tr>
+                            <th>Features</th>
+                            <th>Free</th>
+                            <th>Monthly <br><span style="font-size:12px; color:var(--text-gray); font-weight:normal;">₹49</span></th>
+                            <th>Yearly <br><span style="font-size:12px; color:var(--text-gray); font-weight:normal;">₹299</span></th>
+                            <th>Lifetime <br><span style="font-size:12px; color:var(--text-gray); font-weight:normal;">₹799</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Daily Journaling</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td></tr>
+                        <tr><td>Mood Tracking</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td></tr>
+                        <tr><td>Mood Insights & Trends</td><td class="dash">Limited</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td></tr>
+                        <tr><td>Ad-free Experience</td><td class="dash">—</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td></tr>
+                        <tr><td>Cloud Backup & Sync</td><td class="dash">—</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td></tr>
+                        <tr><td>Premium Themes</td><td class="dash">—</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td></tr>
+                        <tr><td>Export Journal</td><td class="dash">—</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td></tr>
+                        <tr><td>Advanced Statistics</td><td class="dash">—</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td></tr>
+                        <tr><td>PIN / App Lock</td><td class="dash">—</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td></tr>
+                        <tr><td>One-time Payment</td><td class="dash">—</td><td>No auto renewal</td><td>No auto renewal</td><td>No auto renewal</td></tr>
+                    </tbody>
+                </table>
+                <div class="payment-note">🛡️ All payments are one-time. No auto renewal.</div>
+            </div>
+        </section>
+
+        <!-- About Us Section -->
+        <section id="about">
+            <div class="about-header">
+                <div class="about-text">
+                    <h4>ABOUT US</h4>
+                    <h2>About Dayline 💜</h2>
+                    <p>Dayline is a personal journaling app designed to help you understand your emotions, reflect on your day, and build better mental well-being.</p>
+                    <p>We believe that writing a little every day can lead to powerful self-awareness and positive change.</p>
+                </div>
+                <div class="about-image">
+                    <!-- Placeholder for the notebook illustration -->
+                    <div style="width:100%; height:250px; background:var(--primary-light); border-radius:20px; display:flex; align-items:center; justify-content:center; color:var(--primary);">[Illustration]</div>
+                </div>
+            </div>
+
+            <div class="about-cards">
+                <div class="about-card">
+                    <div class="icon">🛡️</div>
+                    <h3>Built with Care</h3>
+                    <p>Thoughtfully crafted for a calm and meaningful journaling experience.</p>
+                </div>
+                <div class="about-card">
+                    <div class="icon">🔒</div>
+                    <h3>Privacy First</h3>
+                    <p>Your privacy is our priority. Your data stays safe and secure.</p>
+                </div>
+                <div class="about-card">
+                    <div class="icon">👥</div>
+                    <h3>Made for Everyone</h3>
+                    <p>Simple, beautiful and designed for everyone on their journey.</p>
+                </div>
+            </div>
+
+            <div class="developer-card">
+                <div>
+                    <h3>Developed by Nexifylabs</h3>
+                    <p>Dayline is an independent project built with passion to make journaling simple, beautiful and helpful for everyone.</p>
+                </div>
+                <div style="font-size:40px;">🌿</div>
+            </div>
+        </section>
+
+        <!-- Contact Us Section -->
+        <section id="contact">
+            <div class="contact-section">
+                <div class="contact-info">
+                    <h4>CONTACT US</h4>
+                    <h2>Get in touch 💜</h2>
+                    <p>Have questions, feedback or just want to say hello? We'd love to hear from you!</p>
+
+                    <div class="contact-method">
+                        <div class="contact-icon">✉️</div>
+                        <div>
+                            <p>Email</p>
+                            <p>dayline.help@gmail.com</p>
+                        </div>
+                    </div>
+                    <div class="contact-method">
+                        <div class="contact-icon">📞</div>
+                        <div>
+                            <p>Phone</p>
+                            <p>+91 XXXXX XXXXX<br><span style="font-size:12px;">(to be updated before publication)</span></p>
+                        </div>
+                    </div>
+                    <div class="contact-method">
+                        <div class="contact-icon">⏱️</div>
+                        <div>
+                            <p>We usually respond within</p>
+                            <p>24-48 hours</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="contact-form">
+                    <div class="form-row">
+                        <input type="text" placeholder="Your Name">
+                        <input type="email" placeholder="Your Email">
+                    </div>
+                    <input type="text" placeholder="Subject" style="width:100%; margin-bottom:16px;">
+                    <textarea placeholder="Your Message"></textarea>
+                    <button class="btn-submit">Send Message <span>🚀</span></button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer>
+            <div>© 2026 Dayline. All rights reserved. Developed by <strong>Nexifylabs 💜</strong></div>
+            <div class="footer-links">
+                <!-- Link these to the separate policy file provided below -->
+                <a href="policy.html">Terms & Conditions</a>
+                <a href="policy.html">Privacy Policy</a>
+            </div>
+        </footer>
+    </div>
+</body>
+</html>

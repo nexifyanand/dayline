@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dayline - Privacy Policy</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            /* Primary Brand Colors */
+            --primary: #5B4294; 
+            --primary-light: #f2efff; 
+            --primary-hover: #482ab8;
+            --text-dark: #1b162e; 
+            --text-gray: #6b7280; 
+            --bg-color: #fcfcff; 
+            --white: #ffffff;
+            --border-color: #f1f1f5;
+            --border-radius-pill: 50px;
+            --border-radius-card: 20px;
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-dark);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Navigation */
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-dark);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+        
+        .logo i {
+            color: var(--primary);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 30px;
+            list-style: none;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--text-dark);
+            font-weight: 500;
+            font-size: 15px;
+            transition: var(--transition);
+            padding-bottom: 4px;
+        }
+        
+        .nav-links a:hover {
+            color: var(--primary);
+        }
+
+        .btn {
+            padding: 12px 28px;
+            border-radius: var(--border-radius-pill);
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 15px;
+            border: none;
+            transition: var(--transition);
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: var(--white);
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+        }
+
+        /* Page Header */
+        .page-header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-top: 50px;
+        }
+
+        .badge {
+            background-color: var(--primary-light);
+            color: var(--primary);
+            padding: 6px 16px;
+            border-radius: var(--border-radius-pill);
+            font-size: 11px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .page-header h1 {
+            font-size: 32px;
+            color: var(--text-dark);
+            margin-bottom: 12px;
+            line-height: 1.2;
+            font-weight: 700;
+        }
+
+        .page-header p {
+            color: var(--text-gray);
+            font-size: 14px;
+        }
+
+        /* Legal Content Container */
+        .legal-container {
+            max-width: 800px;
+            margin: 0 auto 100px;
+            background: var(--white);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 60px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+        }
+
+        .last-updated {
+            font-size: 13px;
+            color: var(--text-gray);
+            font-weight: 500;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        /* Typography for Legal Text */
+        .legal-content h2 {
+            font-size: 18px;
+            color: var(--text-dark);
+            margin-top: 45px;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .legal-content h2:first-child {
+            margin-top: 0;
+        }
+
+        .legal-content h3 {
+            font-size: 15px;
+            color: var(--text-dark);
+            margin-top: 25px;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .legal-content p {
+            font-size: 14px;
+            color: var(--text-gray);
+            line-height: 1.8;
+            margin-bottom: 15px;
+        }
+
+        .legal-content ul, .legal-content ol {
+            margin-bottom: 25px;
+            padding-left: 20px;
+        }
+
+        .legal-content li {
+            font-size: 14px;
+            color: var(--text-gray);
+            line-height: 1.8;
+            margin-bottom: 8px;
+        }
+        
+        .legal-content a {
+            color: var(--primary);
+            text-decoration: none;
+            transition: var(--transition);
+            font-weight: 500;
+        }
+
+        .legal-content a:hover {
+            text-decoration: underline;
+            color: var(--primary-hover);
+        }
+
+        /* Footer */
+        footer {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            padding: 35px 0;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-gray);
+            font-size: 13px;
+        }
+        
+        .developer {
+            text-align: center;
+        }
+        
+        .developer i {
+            color: var(--primary);
+        }
+        .developer strong {
+            color: var(--text-dark);
+            font-weight: 600;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .nav-links { display: none; }
+            .legal-container { padding: 30px 20px; border-radius: 16px; margin-bottom: 60px; }
+            .page-header h1 { font-size: 28px; }
+            footer { grid-template-columns: 1fr; gap: 20px; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Navigation -->
+        <nav>
+            <a href="index.html" class="logo">
+                <i class="fa-solid fa-leaf"></i> Dayline
+            </a>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="features.html">Features</a></li>
+                <li><a href="plans.html">Plans</a></li>
+                <li><a href="about.html">About Us</a></li>
+                <li><a href="contact.html">Contact</a></li>
+            </ul>
+            <a href="#" class="btn btn-primary">Coming Soon</a>
+        </nav>
+
+        <!-- Header -->
+        <div class="page-header">
+            <div class="badge">LEGAL</div>
+            <h1>Privacy Policy</h1>
+            <p>How we collect, use, and protect your information.</p>
+        </div>
+
+        <!-- Document Container -->
+        <div class="legal-container">
+            <div class="last-updated">
+                Last Updated: August 15, 2026
+            </div>
+
+            <div class="legal-content">
+                
+                <p>At Dayline, we respect your privacy and understand that journaling can involve deeply personal information.</p>
+                <p>This Privacy Policy explains how Dayline, developed and operated by Nexifylabs, collects, uses, stores, protects, and handles information when you use the Dayline mobile application, website, and related services (collectively, the "Service").</p>
+                <p>By using Dayline, you acknowledge that you have read and understood this Privacy Policy.</p>
+
+                <h2>1. Our Privacy Commitment</h2>
+                <p>Dayline is designed to help you privately record and organize your thoughts, memories, experiences, and daily moments.</p>
+                <p>We aim to:</p>
+                <ul>
+                    <li>Collect only information reasonably necessary to provide the Service.</li>
+                    <li>Use personal information only for legitimate and disclosed purposes.</li>
+                    <li>Take reasonable measures to protect information.</li>
+                    <li>Give users appropriate control over their information.</li>
+                    <li>Not sell personal information to third parties.</li>
+                    <li>Provide ways to request access, correction, or deletion where applicable.</li>
+                </ul>
+
+                <h2>2. Information We May Collect</h2>
+                <p>Depending on the features you use, Dayline may collect or process the following categories of information.</p>
+                
+                <h3>2.1 Account Information</h3>
+                <p>When you create a Dayline account, we may collect information such as:</p>
+                <ul>
+                    <li>Name or display name, where provided.</li>
+                    <li>Email address.</li>
+                    <li>Account credentials or authentication information.</li>
+                    <li>Account creation and authentication information.</li>
+                    <li>Information necessary to maintain your account.</li>
+                </ul>
+                <p>The exact information collected may depend on the sign-in method you choose.</p>
+
+                <h3>2.2 Journal and User Content</h3>
+                <p>Dayline may process information that you voluntarily create or store in the application, including:</p>
+                <ul>
+                    <li>Journal entries.</li>
+                    <li>Notes.</li>
+                    <li>Text content.</li>
+                    <li>Images or attachments, where supported.</li>
+                    <li>Dates or timestamps associated with entries.</li>
+                    <li>Other content you intentionally provide through Dayline.</li>
+                </ul>
+                <p>Your journal content is your content. Dayline does not claim ownership of your personal journal entries.</p>
+                <p>Because journal entries may contain highly personal information, you should carefully consider what you choose to store in the Service.</p>
+
+                <h3>2.3 Purchase and Subscription Information</h3>
+                <p>If you purchase a Dayline premium plan, we may receive information necessary to identify and manage your purchase, such as:</p>
+                <ul>
+                    <li>Purchased plan.</li>
+                    <li>Transaction or order reference.</li>
+                    <li>Purchase date.</li>
+                    <li>Subscription or entitlement status.</li>
+                    <li>Payment status.</li>
+                    <li>Refund or cancellation status.</li>
+                </ul>
+                <p>Payment card numbers, bank account credentials, UPI PINs, and similar sensitive payment credentials are generally processed by the applicable payment service provider rather than stored directly by Dayline.</p>
+                <p>We do not need access to your complete payment credentials to provide your purchased Dayline plan.</p>
+
+                <h3>2.4 Technical and Device Information</h3>
+                <p>When you use Dayline, certain technical information may be processed automatically as part of operating and securing the Service.</p>
+                <p>Depending on the implementation of Dayline, this may include:</p>
+                <ul>
+                    <li>Device type.</li>
+                    <li>Operating system and version.</li>
+                    <li>Application version.</li>
+                    <li>Basic device configuration.</li>
+                    <li>IP address or network information.</li>
+                    <li>Error, crash, and diagnostic information.</li>
+                    <li>Security and authentication logs.</li>
+                    <li>Date and time of requests.</li>
+                </ul>
+                <p>We use such information primarily to operate, secure, troubleshoot, and improve Dayline.</p>
+
+                <h3>2.5 Website Information</h3>
+                <p>When you visit the official Dayline website, certain technical information may be processed by the website infrastructure or hosting provider.</p>
+                <p>This may include information such as:</p>
+                <ul>
+                    <li>IP address.</li>
+                    <li>Browser type.</li>
+                    <li>Device type.</li>
+                    <li>Pages requested.</li>
+                    <li>Date and time of access.</li>
+                    <li>Basic server logs.</li>
+                </ul>
+                <p>If cookies, analytics tools, or similar technologies are used on the website, the applicable information and purposes will be disclosed where required.</p>
+
+                <h2>3. Information We Do Not Intentionally Collect</h2>
+                <p>Dayline does not intentionally request sensitive information that is unnecessary for providing the Service.</p>
+                <p>Unless a specific feature clearly requires it and appropriate notice is provided, Dayline does not intentionally collect information such as:</p>
+                <ul>
+                    <li>Contacts from your device.</li>
+                    <li>Precise GPS location.</li>
+                    <li>Call logs.</li>
+                    <li>SMS messages.</li>
+                    <li>Microphone recordings.</li>
+                    <li>Camera recordings.</li>
+                    <li>Passwords for external services.</li>
+                    <li>Banking PINs.</li>
+                    <li>UPI PINs.</li>
+                    <li>Government identification numbers.</li>
+                </ul>
+                <p>Some device permissions may be introduced when new features are added. If a feature requires additional personal information or device permissions, we will provide appropriate information about the purpose of that collection.</p>
+
+                <h2>4. How We Use Your Information</h2>
+                <p>We may process information for purposes including:</p>
+                
+                <h3>Providing Dayline</h3>
+                <p>To:</p>
+                <ul>
+                    <li>Create and maintain your account.</li>
+                    <li>Authenticate you.</li>
+                    <li>Store and display your journal entries.</li>
+                    <li>Provide features you request.</li>
+                    <li>Synchronize your information where synchronization is supported.</li>
+                    <li>Provide premium features you purchase.</li>
+                </ul>
+
+                <h3>Security</h3>
+                <p>To:</p>
+                <ul>
+                    <li>Protect accounts.</li>
+                    <li>Detect unauthorized access.</li>
+                    <li>Prevent fraud and abuse.</li>
+                    <li>Investigate security incidents.</li>
+                    <li>Protect the integrity of Dayline.</li>
+                </ul>
+
+                <h3>Payments</h3>
+                <p>To:</p>
+                <ul>
+                    <li>Process purchases.</li>
+                    <li>Confirm transactions.</li>
+                    <li>Activate premium entitlements.</li>
+                    <li>Handle cancellations and refunds.</li>
+                    <li>Maintain transaction records where required.</li>
+                </ul>
+
+                <h3>Service Improvement</h3>
+                <p>To:</p>
+                <ul>
+                    <li>Diagnose technical problems.</li>
+                    <li>Fix crashes and errors.</li>
+                    <li>Improve application performance.</li>
+                    <li>Understand general Service reliability.</li>
+                    <li>Develop and improve features.</li>
+                </ul>
+
+                <h3>Legal Compliance</h3>
+                <p>We may process information when reasonably necessary to:</p>
+                <ul>
+                    <li>Comply with applicable law.</li>
+                    <li>Respond to valid legal requests.</li>
+                    <li>Protect our legal rights.</li>
+                    <li>Investigate fraud or abuse.</li>
+                    <li>Protect users and the Service.</li>
+                </ul>
+
+                <h2>5. Journal Content and Privacy</h2>
+                <p>We understand that journal entries can be extremely personal.</p>
+                <p>Dayline does not use your private journal entries for advertising purposes.</p>
+                <p>We do not sell your journal entries or personal information to third parties.</p>
+                <p>Your journal content is processed only as reasonably necessary to provide the features you request, operate the Service, maintain security, or comply with applicable legal obligations.</p>
+                <p>Where third-party infrastructure is used to store or process your journal data, those providers may process information on our behalf for the specific services they provide.</p>
+
+                <h2>6. Legal Basis and Consent</h2>
+                <p>Where applicable under Indian data protection law, Dayline processes personal data for lawful purposes and in accordance with applicable requirements.</p>
+                <p>Depending on the processing activity, information may be processed:</p>
+                <ul>
+                    <li>With your consent.</li>
+                    <li>To provide a service you have requested.</li>
+                    <li>To perform necessary account or transaction functions.</li>
+                    <li>To comply with legal obligations.</li>
+                    <li>For legitimate operational and security purposes where permitted by applicable law.</li>
+                </ul>
+                <p>Where consent is required, we aim to provide clear information about what information is being requested and why.</p>
+                <p>You may have rights to withdraw consent for processing that relies on consent, subject to applicable law and any consequences of withdrawal.</p>
+
+                <h2>7. Sharing of Information</h2>
+                <p>We do not sell your personal information.</p>
+                <p>We may share or provide access to information only when reasonably necessary for purposes such as providing the Service, processing transactions, maintaining infrastructure, protecting security, or complying with law.</p>
+                <p>These parties may include:</p>
+                
+                <h3>Service Providers</h3>
+                <p>Third-party providers may assist with:</p>
+                <ul>
+                    <li>Cloud hosting.</li>
+                    <li>Database infrastructure.</li>
+                    <li>Authentication.</li>
+                    <li>Payment processing.</li>
+                    <li>Email delivery.</li>
+                    <li>Analytics or diagnostics.</li>
+                    <li>Crash reporting.</li>
+                    <li>Security.</li>
+                    <li>Other technical infrastructure.</li>
+                </ul>
+                <p>Such providers should receive only the information reasonably necessary for the service they provide.</p>
+
+                <h3>Legal Requirements</h3>
+                <p>We may disclose information when required or permitted by applicable law, legal process, court order, or valid governmental request.</p>
+
+                <h3>Protection of Rights and Security</h3>
+                <p>We may disclose information where reasonably necessary to investigate fraud, security incidents, abuse, unlawful activity, or threats to Dayline, our users, or others.</p>
+
+                <h2>8. Payment Service Providers</h2>
+                <p>Payments may be processed through third-party payment providers.</p>
+                <p>When you make a purchase, the payment provider may independently process payment information according to its own privacy policy and terms.</p>
+                <p>Dayline may receive transaction-related information necessary to confirm and manage your purchase.</p>
+                <p>Dayline does not ask you to provide your UPI PIN, ATM PIN, card PIN, or banking password to us.</p>
+                <p>Never provide such credentials to Dayline support or any person claiming to represent Dayline.</p>
+
+                <h2>9. Data Security</h2>
+                <p>We take reasonable technical and organizational measures designed to protect personal information against unauthorized access, alteration, disclosure, loss, or misuse.</p>
+                <p>Security measures may include:</p>
+                <ul>
+                    <li>Access controls.</li>
+                    <li>Authentication protections.</li>
+                    <li>Secure communication.</li>
+                    <li>Appropriate server-side protections.</li>
+                    <li>Monitoring and logging where necessary.</li>
+                    <li>Limited access to personal information.</li>
+                    <li>Security updates and maintenance.</li>
+                </ul>
+                <p>However, no internet service, application, server, or electronic storage system can guarantee absolute security.</p>
+                <p>You are also responsible for protecting your account credentials and device.</p>
+
+                <h2>10. Account Security</h2>
+                <p>You are responsible for keeping your Dayline account credentials confidential.</p>
+                <p>You should:</p>
+                <ul>
+                    <li>Use a strong password where passwords are supported.</li>
+                    <li>Avoid sharing your credentials.</li>
+                    <li>Keep your device protected.</li>
+                    <li>Sign out of accounts on shared devices.</li>
+                    <li>Contact us if you suspect unauthorized account access.</li>
+                </ul>
+                <p>If we detect activity that reasonably indicates a security risk, we may take protective measures such as requiring additional verification, temporarily restricting access, or securing the affected account.</p>
+
+                <h2>11. Data Retention</h2>
+                <p>We retain personal information only for as long as reasonably necessary for the purposes described in this Privacy Policy, to provide the Service, maintain legitimate business and security records, or comply with applicable legal obligations.</p>
+                <p>The exact retention period may vary depending on the type of information and the reason it is processed.</p>
+                <p>Information that is no longer required may be deleted, anonymized, or otherwise disposed of securely, subject to applicable legal or operational requirements.</p>
+                <p>Detailed information about account deletion, data deletion, export, and retention is provided in the Dayline Data Security & Deletion Policy.</p>
+
+                <h2>12. Your Privacy Rights</h2>
+                <p>Subject to applicable law, you may have rights relating to your personal information, including rights to:</p>
+                <ul>
+                    <li>Request access to information associated with your account.</li>
+                    <li>Request correction of inaccurate information.</li>
+                    <li>Request deletion of personal information where applicable.</li>
+                    <li>Withdraw consent where processing is based on consent.</li>
+                    <li>Request information regarding processing of your personal data.</li>
+                    <li>Raise a privacy-related complaint or grievance.</li>
+                </ul>
+                <p>The availability and scope of these rights may depend on applicable law and the nature of the processing.</p>
+                <p>Requests may be submitted through the official Dayline support channel.</p>
+
+                <h2>13. Account Deletion</h2>
+                <p>You may request deletion of your Dayline account.</p>
+                <p>When an account deletion request is processed, we will delete or anonymize applicable personal information in accordance with our Data Security & Deletion Policy, subject to information that we are required or permitted to retain under applicable law.</p>
+                <p>Deleting your account may result in permanent loss of access to your account and associated content.</p>
+                <p>You should export or otherwise save information you want to retain before requesting deletion where an export facility is available.</p>
+
+                <h2>14. Children's Privacy</h2>
+                <p>Dayline is not designed to knowingly collect personal information from children in circumstances where such collection is prohibited by applicable law.</p>
+                <p>Where applicable, users below the legally permitted age should use Dayline only with appropriate parental or guardian involvement.</p>
+                <p>If you believe that a child has provided personal information to Dayline in violation of applicable requirements, please contact us so that we can review the matter and take appropriate action.</p>
+
+                <h2>15. Cookies and Similar Technologies</h2>
+                <p>The Dayline website may use cookies or similar technologies where necessary for functionality, security, preferences, analytics, or other disclosed purposes.</p>
+                <p>The use of optional cookies or similar technologies will be handled in accordance with applicable law and the configuration of the website.</p>
+                <p>You may be able to control certain cookies through your browser settings.</p>
+
+                <h2>16. Analytics and Diagnostics</h2>
+                <p>Dayline may use analytics, crash-reporting, or diagnostic technologies to understand technical problems and improve application reliability.</p>
+                <p>Such technologies may process technical information such as application version, device information, operating system information, crash information, and other diagnostic data.</p>
+                <p>We aim to avoid using private journal content for general analytics or advertising purposes.</p>
+                <p>If specific analytics services are introduced that process additional personal information, this Privacy Policy may be updated accordingly.</p>
+
+                <h2>17. Advertising</h2>
+                <p>Dayline does not sell your personal information to advertisers.</p>
+                <p>If advertising is introduced into Dayline in the future, we will update this Privacy Policy to explain the relevant data practices and provide any choices or disclosures required by applicable law.</p>
+
+                <h2>18. International Data Processing</h2>
+                <p>Some service providers used by Dayline may operate infrastructure or process information outside India.</p>
+                <p>Where personal information is processed outside India, we will take steps required by applicable law and applicable contractual or security requirements.</p>
+
+                <h2>19. Third-Party Links and Services</h2>
+                <p>The Dayline website or application may contain links to third-party websites or services.</p>
+                <p>Those services operate independently from Dayline and may have their own privacy policies and terms.</p>
+                <p>We encourage you to review the privacy practices of third-party services before providing them with personal information.</p>
+
+                <h2>20. Data Breaches and Security Incidents</h2>
+                <p>If we become aware of a personal data breach that requires notification under applicable law, we will take appropriate steps to investigate, contain, and respond to the incident and provide notifications where legally required.</p>
+                <p>We may also take measures to protect affected accounts and users.</p>
+
+                <h2>21. Changes to This Privacy Policy</h2>
+                <p>We may update this Privacy Policy when Dayline's features, technology, data practices, or applicable legal requirements change.</p>
+                <p>The "Last Updated" date at the beginning of this Privacy Policy indicates when it was most recently revised.</p>
+                <p>If we make material changes, we may provide reasonable notice through the Dayline application, website, email, or another appropriate method.</p>
+                <p>We encourage you to periodically review this page.</p>
+
+                <h2>22. Relationship With Other Dayline Policies</h2>
+                <p>This Privacy Policy should be read together with the other official Dayline policies:</p>
+                <ul>
+                    <li><a href="terms.html">General Terms & Conditions</a> — rules governing the use of Dayline.</li>
+                    <li><a href="refunds.html">Refund & Cancellation Policy</a> — payments, cancellations, and refunds.</li>
+                    <li><a href="security.html">Data Security & Deletion Policy</a> — security practices, data export, account deletion, and retention.</li>
+                </ul>
+                <p>Each policy addresses a different aspect of your relationship with Dayline.</p>
+
+                <h2>23. Contact and Privacy Requests</h2>
+                <p>If you have a question about this Privacy Policy, want to exercise a privacy-related right, or wish to raise a privacy complaint, please contact Dayline through the official support channel.</p>
+                <p>
+                    <strong>Dayline</strong><br>
+                    Developed by Nexifylabs<br>
+                    India
+                </p>
+                <p>
+                    <strong>Website:</strong> <a href="index.html">www.dayline.com</a><br>
+                    <strong>Privacy Email:</strong> <a href="mailto:dayline.help@gmail.com">dayline.help@gmail.com</a>
+                </p>
+                <p>When submitting a privacy request, please provide enough information for us to identify the relevant account and understand your request.</p>
+                <p>We may need to verify your identity or account ownership before completing certain requests.</p>
+
+                <h2>24. Your Acknowledgement</h2>
+                <p>By using Dayline, you acknowledge that you have read and understood this Privacy Policy.</p>
+                <p>Where applicable, consent will be requested separately for processing activities that require consent.</p>
+                <p>Your continued use of Dayline is subject to the applicable terms and privacy practices described in this Policy and the other official Dayline policies.</p>
+                
+                <p style="text-align: center; margin-top: 40px; font-weight: 500; color: var(--primary);">Dayline — Private moments. Meaningful memories.</p>
+
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer>
+            <div class="copyright">
+                &copy; 2026 Dayline. All rights reserved.
+            </div>
+            <div class="developer">
+                Developed by <strong>Nexifylabs</strong> <i class="fa-solid fa-heart"></i>
+            </div>
+            <div></div> 
+        </footer>
+    </div>
+
+</body>
+</html>
