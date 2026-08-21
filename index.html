@@ -8,7 +8,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            /* Updated Primary Color */
             --primary: #5B4294; 
             --primary-light: #f0ecf9; 
             --primary-hover: #4a3579;
@@ -192,7 +191,6 @@
             position: relative;
         }
         
-        /* UPDATED CSS TO HIDE THE BLACK BARS */
         .hero-app-img {
             width: 100%;
             max-width: 480px;
@@ -201,13 +199,7 @@
             z-index: 2;
             box-shadow: none;
             object-fit: cover;
-            /* 
-               clip-path cuts the image layer. 
-               The '12px' at the start and the 3rd spot shave 12 pixels off the top and bottom.
-               The 'round 40px' adds your curved corners back.
-            */
             clip-path: inset(12px 0px 12px 0px round 40px);
-            /* Keep border radius as fallback for older browsers */
             border-radius: 40px; 
         }
 
@@ -302,7 +294,8 @@
         }
 
         .cta-content {
-            max-width: 420px;
+            flex: 1;
+            max-width: 500px;
         }
 
         .cta-content h2 {
@@ -318,33 +311,58 @@
 
         .cta-content p {
             color: var(--text-gray);
-            margin-bottom: 30px;
+            margin-bottom: 25px;
             font-size: 15px;
             line-height: 1.7;
+        }
+
+        .cta-form-container {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
         }
 
         .email-form {
             display: flex;
             gap: 12px;
+            align-items: stretch;
+            width: 100%;
         }
 
         .email-form input {
             flex: 1;
+            min-width: 0;
             padding: 14px 20px;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
+            border: 1px solid #e2e2ec;
+            border-radius: 12px;
             font-size: 14px;
             outline: none;
             background: var(--white);
+            color: var(--text-dark);
+            transition: var(--transition);
         }
         
         .email-form input:focus {
             border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(91, 66, 148, 0.1);
         }
 
         .email-form .btn {
-            border-radius: 8px;
+            white-space: nowrap;
+            border-radius: 12px;
             padding: 14px 28px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .form-status-msg {
+            margin-top: 12px;
+            font-size: 14px;
+            font-weight: 500;
+            display: none;
+            text-align: left;
         }
 
         .cta-image-container {
@@ -357,7 +375,7 @@
         .cta-img {
             max-width: 100%;
             height: auto;
-            border-radius: 12px;
+            border-radius: 16px;
             box-shadow: 0 10px 25px rgba(91, 66, 148, 0.1);
         }
 
@@ -390,7 +408,6 @@
             gap: 24px;
         }
 
-        /* FAQ Drop-down Styling */
         details.faq-item {
             background: var(--white);
             border: 1px solid var(--border-color);
@@ -471,6 +488,7 @@
             .cta-section { flex-direction: column; text-align: center; padding: 40px 30px; }
             .cta-content { margin-bottom: 40px; max-width: 100%; }
             .faq-grid { grid-template-columns: 1fr; }
+            .form-status-msg { text-align: center; }
         }
         @media (max-width: 768px) {
             .nav-links { display: none; }
@@ -586,15 +604,16 @@
             <div class="cta-content">
                 <h2>Dayline is coming soon <i class="fa-solid fa-heart"></i></h2>
                 <p>The app isn't available for download yet. Join the waitlist and be the first to know when Dayline launches.</p>
-                <div class="email-form">
-                   
+                
+                <div class="cta-form-container">
                     <form id="waitlist-form" class="email-form">
-    <input type="email" id="waitlist-email" placeholder="Enter your email address" required>
-    <button type="submit" id="waitlist-btn" class="btn btn-primary">Notify Me</button>
-</form>
-<p id="form-status" style="margin-top: 12px; font-size: 14px; display: none;"></p>
+                        <input type="email" id="waitlist-email" placeholder="Enter your email address" required>
+                        <button type="submit" id="waitlist-btn" class="btn btn-primary">Notify Me</button>
+                    </form>
+                    <p id="form-status" class="form-status-msg"></p>
                 </div>
             </div>
+            
             <div class="cta-image-container">
                 <img src="images/book.jpeg" alt="Dayline Notebook" class="cta-img">
             </div>
@@ -605,25 +624,21 @@
             <h2 class="faq-title"><i class="fa-solid fa-sparkles"></i> Frequently Asked Questions</h2>
             
             <div class="faq-grid">
-                <!-- Dropdown 1 -->
                 <details class="faq-item" open>
                     <summary>Is Dayline free to use?</summary>
                     <p>Dayline will have a free version with core features. Premium unlocks advanced insights, themes, backup and more.</p>
                 </details>
                 
-                <!-- Dropdown 2 -->
                 <details class="faq-item">
                     <summary>When will Dayline be available?</summary>
                     <p>Dayline is coming soon to iOS and Android. Join the waitlist to get notified.</p>
                 </details>
                 
-                <!-- Dropdown 3 -->
                 <details class="faq-item">
                     <summary>Will my data be private?</summary>
                     <p>Yes. Your data is encrypted and only accessible to you.</p>
                 </details>
                 
-                <!-- Dropdown 4 -->
                 <details class="faq-item">
                     <summary>Can I use Dayline offline?</summary>
                     <p>Yes! You can write anytime, anywhere. Your entries will sync when you're back online.</p>
@@ -643,52 +658,50 @@
     </div>
 
     <script>
-  const SCRIPT_URL = 'YOUR_SCRIPT_URL_HERE';
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwRhNZn9pTDR1W4jsonrKUNsg3XJNS8xXZxGkG2Z4rnNG1sKqqNROg5KdYWntoZeewX/exec';
 
-  const form = document.getElementById('waitlist-form');
-  const emailInput = document.getElementById('waitlist-email');
-  const submitBtn = document.getElementById('waitlist-btn');
-  const statusMsg = document.getElementById('form-status');
+        const form = document.getElementById('waitlist-form');
+        const emailInput = document.getElementById('waitlist-email');
+        const submitBtn = document.getElementById('waitlist-btn');
+        const statusMsg = document.getElementById('form-status');
 
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const email = emailInput.value.trim();
-    if (!email) return;
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = emailInput.value.trim();
+            if (!email) return;
 
-    // Loading state
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Submitting...';
-    statusMsg.style.display = 'none';
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Submitting...';
+            statusMsg.style.display = 'none';
 
-    try {
-      const response = await fetch(SCRIPT_URL, {
-        method: 'POST',
-        body: JSON.stringify({ email: email }),
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' } // Avoids CORS preflight issues with Google Apps Script
-      });
+            try {
+                const response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ email: email }),
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+                });
 
-      const result = await response.json();
-      statusMsg.textContent = result.message;
-      statusMsg.style.display = 'block';
+                const result = await response.json();
+                statusMsg.textContent = result.message;
+                statusMsg.style.display = 'block';
 
-      if (result.status === 'success') {
-        statusMsg.style.color = '#10b981'; // Green
-        emailInput.value = '';
-      } else if (result.status === 'exists') {
-        statusMsg.style.color = '#f59e0b'; // Amber
-      } else {
-        statusMsg.style.color = '#ef4444'; // Red
-      }
-    } catch (err) {
-      statusMsg.textContent = 'Something went wrong. Please try again.';
-      statusMsg.style.color = '#ef4444';
-      statusMsg.style.display = 'block';
-    } finally {
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Notify Me';
-    }
-  });
-</script>
-
+                if (result.status === 'success') {
+                    statusMsg.style.color = '#10b981';
+                    emailInput.value = '';
+                } else if (result.status === 'exists') {
+                    statusMsg.style.color = '#f59e0b';
+                } else {
+                    statusMsg.style.color = '#ef4444';
+                }
+            } catch (err) {
+                statusMsg.textContent = 'Something went wrong. Please try again.';
+                statusMsg.style.color = '#ef4444';
+                statusMsg.style.display = 'block';
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Notify Me';
+            }
+        });
+    </script>
 </body>
 </html>
