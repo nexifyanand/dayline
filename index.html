@@ -589,6 +589,11 @@
                 <div class="email-form">
                     <input type="email" placeholder="Enter your email address">
                     <button class="btn btn-primary">Notify Me</button>
+                    <form id="waitlist-form" class="email-form">
+    <input type="email" id="waitlist-email" placeholder="Enter your email address" required>
+    <button type="submit" id="waitlist-btn" class="btn btn-primary">Notify Me</button>
+</form>
+<p id="form-status" style="margin-top: 12px; font-size: 14px; display: none;"></p>
                 </div>
             </div>
             <div class="cta-image-container">
@@ -637,6 +642,54 @@
             </div>
         </footer>
     </div>
+
+    <script>
+  const SCRIPT_URL = 'YOUR_SCRIPT_URL_HERE';
+
+  const form = document.getElementById('waitlist-form');
+  const emailInput = document.getElementById('waitlist-email');
+  const submitBtn = document.getElementById('waitlist-btn');
+  const statusMsg = document.getElementById('form-status');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = emailInput.value.trim();
+    if (!email) return;
+
+    // Loading state
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Submitting...';
+    statusMsg.style.display = 'none';
+
+    try {
+      const response = await fetch(SCRIPT_URL, {
+        method: 'POST',
+        body: JSON.stringify({ email: email }),
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' } // Avoids CORS preflight issues with Google Apps Script
+      });
+
+      const result = await response.json();
+      statusMsg.textContent = result.message;
+      statusMsg.style.display = 'block';
+
+      if (result.status === 'success') {
+        statusMsg.style.color = '#10b981'; // Green
+        emailInput.value = '';
+      } else if (result.status === 'exists') {
+        statusMsg.style.color = '#f59e0b'; // Amber
+      } else {
+        statusMsg.style.color = '#ef4444'; // Red
+      }
+    } catch (err) {
+      statusMsg.textContent = 'Something went wrong. Please try again.';
+      statusMsg.style.color = '#ef4444';
+      statusMsg.style.display = 'block';
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Notify Me';
+    }
+  });
+</script>
 
 </body>
 </html>
