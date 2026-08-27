@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "cashfree-pg": "^6.0.5",
+    "firebase-admin": "^14.3.0"
+  }
+}

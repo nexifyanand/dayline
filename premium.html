@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dayline Premium</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
+    
+    <style>
+        :root {
+            --primary: #5B4294;
+            --primary-light: #f4f1fa;
+            --text-dark: #1a1a2e;
+            --text-muted: #6b6b83;
+            --bg-body: #fbfcff;
+            --card-shadow: 0 10px 30px rgba(91, 66, 148, 0.08);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-body);
+            color: var(--text-dark);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            flex: 1;
+        }
+
+        /* Header */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+        }
+        .logo { font-size: 24px; font-weight: bold; color: var(--text-dark); display: flex; align-items: center; gap: 8px; }
+        .logo i { color: var(--primary); }
+        .nav-links { display: flex; gap: 30px; }
+        .nav-links a { text-decoration: none; color: var(--text-dark); font-weight: 500; font-size: 15px;}
+        .btn-primary { background: var(--primary); color: white; padding: 10px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; border: none; cursor: pointer; }
+
+        /* Hero Section */
+        .hero { display: flex; align-items: center; justify-content: space-between; padding: 60px 0; gap: 40px; }
+        .hero-left { max-width: 45%; }
+        .badge { display: inline-block; background: var(--primary-light); color: var(--primary); padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; margin-bottom: 20px; text-transform: uppercase; }
+        .hero-left h1 { font-size: 48px; line-height: 1.2; margin: 0 0 20px 0; }
+        .hero-left h1 span { color: var(--primary); }
+        .hero-left p { color: var(--text-muted); font-size: 16px; line-height: 1.6; margin-bottom: 30px; }
+        .trust-badges { display: flex; gap: 15px; color: var(--primary); font-size: 14px; font-weight: 500; }
+
+        /* Code Card */
+        .code-card { background: white; padding: 30px; border-radius: 16px; box-shadow: var(--card-shadow); max-width: 450px; width: 100%; position: relative; z-index: 10; }
+        .code-card h3 { margin: 0 0 10px 0; font-size: 20px; }
+        .code-card p { margin: 0 0 20px 0; color: var(--text-muted); font-size: 14px; }
+        
+        .input-group { display: flex; align-items: center; border: 1px solid #e1e1e1; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; background: #fafafa; }
+        .input-group i { color: var(--primary); margin-right: 12px; }
+        .input-group input { border: none; background: transparent; outline: none; width: 100%; font-size: 16px; color: var(--text-dark); }
+        
+        .btn-full { width: 100%; padding: 14px; border-radius: 8px; font-size: 16px; font-weight: 600; text-align: center; margin-bottom: 20px; }
+        .btn-outline { background: white; border: 1px solid var(--primary); color: var(--primary); display: flex; justify-content: center; align-items: center; gap: 8px; cursor: pointer; }
+        
+        .divider { text-align: center; margin: 20px 0; color: var(--text-muted); font-size: 14px; position: relative; }
+        
+        .card-actions { display: flex; justify-content: space-between; border-top: 1px solid #eee; padding-top: 20px; margin-top: 20px; }
+        .action-item { text-align: center; font-size: 12px; color: var(--text-muted); }
+        .action-item i { display: block; font-size: 18px; color: var(--primary); margin-bottom: 8px; }
+        .action-item span { font-weight: 600; color: var(--text-dark); display: block; margin-bottom: 4px; }
+
+        /* How it works */
+        .how-it-works { text-align: center; padding: 60px 0; border-top: 1px solid #f0f0f0; }
+        .how-it-works h2 { margin-bottom: 40px; font-size: 18px; position: relative; display: inline-block; color: var(--text-dark); font-weight: 600; }
+        .steps { display: flex; justify-content: center; gap: 60px; }
+        .step { text-align: center; max-width: 150px; position: relative; }
+        .step-icon { width: 60px; height: 60px; background: var(--primary-light); color: var(--primary); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; margin: 0 auto 15px auto; }
+        .step h4 { margin: 0 0 10px 0; font-size: 14px; font-weight: 600; }
+        .step p { margin: 0; font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+
+        /* Bottom Features */
+        .bottom-features { background: white; border-radius: 16px; padding: 40px; display: flex; justify-content: space-between; margin-bottom: 40px; box-shadow: var(--card-shadow); }
+        .feature { display: flex; align-items: flex-start; gap: 15px; max-width: 22%; }
+        .feature i { font-size: 24px; color: var(--primary); }
+        .feature h5 { margin: 0 0 8px 0; font-size: 15px; }
+        .feature p { margin: 0; font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+        
+        /* Footer Text */
+        .footer-terms { text-align: center; color: var(--text-muted); font-size: 12px; padding-bottom: 40px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .footer-terms i { color: var(--primary); }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <div class="logo">
+                <i class="fa-solid fa-leaf"></i> Dayline<i class="fa-solid fa-heart" style="font-size: 12px; margin-left: -4px;"></i>
+            </div>
+            <div class="nav-links">
+                <a href="#">Home</a>
+                <a href="#">Features</a>
+                <a href="#">Plans</a>
+                <a href="#">About Us</a>
+                <a href="#">Contact</a>
+            </div>
+            <button class="btn-primary">Coming Soon</button>
+        </header>
+
+        <section class="hero">
+            <div class="hero-left">
+                <div class="badge"><i class="fa-solid fa-sparkles"></i> Unlock Premium</div>
+                <h1>Unlock Dayline<br><span>Premium</span> ✨</h1>
+                <p>Use your Dayline code to purchase or top up your Premium plan instantly.</p>
+                <div class="trust-badges">
+                    <span><i class="fa-regular fa-circle-check"></i> Secure</span> • 
+                    <span>No login required</span> • 
+                    <span>100% Safe</span>
+                </div>
+            </div>
+
+            <div class="code-card">
+                <h3>Enter your Dayline Code</h3>
+                <p>Use the code generated in Dayline app</p>
+                
+                <div class="input-group">
+                    <i class="fa-solid fa-ticket-simple"></i>
+                   <input type="text" id="daylineCodeInput" placeholder="DL-XXXX-XXXX-XXXX">
+                    <i class="fa-regular fa-circle-question" style="color:#999; margin-right:0; margin-left:auto; cursor: pointer;"></i>
+                </div>
+                
+                <button id="continueBtn" class="btn-primary btn-full">Continue <i class="fa-solid fa-arrow-right"></i></button>
+                <div class="divider">or</div>
+                
+                <button class="btn-outline btn-full"><i class="fa-solid fa-link"></i> How to get a code?</button>
+                
+                <div class="card-actions">
+                    <div class="action-item">
+                        <i class="fa-solid fa-mobile-screen"></i>
+                        <span>Generate in App</span>
+                        Profile &rarr; Get Premium
+                    </div>
+                    <div class="action-item">
+                        <i class="fa-solid fa-gift"></i>
+                        <span>Gift from a friend</span>
+                        Redeem a gift code
+                    </div>
+                    <div class="action-item">
+                        <i class="fa-solid fa-link"></i>
+                        <span>Shareable Link</span>
+                        Use link from app
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="how-it-works">
+            <h2><i class="fa-solid fa-turn-down" style="color: var(--primary); font-size: 14px;"></i> How it works</h2>
+            <div class="steps">
+                <div class="step">
+                    <div class="step-icon"><i class="fa-solid fa-qrcode"></i></div>
+                    <h4>1. Get Code or Link</h4>
+                    <p>Generate a code or get a secure link from Dayline app.</p>
+                </div>
+                <div class="step">
+                    <div class="step-icon"><i class="fa-solid fa-ticket"></i></div>
+                    <h4>2. Enter Code</h4>
+                    <p>Enter your code here to proceed.</p>
+                </div>
+                <div class="step">
+                    <div class="step-icon"><i class="fa-regular fa-credit-card"></i></div>
+                    <h4>3. Choose Plan</h4>
+                    <p>Select or top up your Premium plan.</p>
+                </div>
+                <div class="step">
+                    <div class="step-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                    <h4>4. Unlock Premium</h4>
+                    <p>Premium will be activated in your Dayline app.</p>
+                </div>
+            </div>
+        </section>
+
+        <div class="bottom-features">
+            <div class="feature">
+                <i class="fa-solid fa-lock"></i>
+                <div>
+                    <h5>No Login Required</h5>
+                    <p>Purchase or top up without creating an account.</p>
+                </div>
+            </div>
+            <div class="feature">
+                <i class="fa-solid fa-bolt"></i>
+                <div>
+                    <h5>Instant Activation</h5>
+                    <p>Premium gets activated instantly in the app.</p>
+                </div>
+            </div>
+            <div class="feature">
+                <i class="fa-solid fa-shield-check"></i>
+                <div>
+                    <h5>Safe & Secure</h5>
+                    <p>Your data and payments are always secure.</p>
+                </div>
+            </div>
+            <div class="feature">
+                <i class="fa-solid fa-gift"></i>
+                <div>
+                    <h5>Share with Friends</h5>
+                    <p>Gift Premium to someone special easily.</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer-terms">
+            <i class="fa-solid fa-lock"></i> Secure payments &nbsp;&bull;&nbsp; Terms & Conditions apply &nbsp;&bull;&nbsp; No auto renewal &nbsp;&bull;&nbsp; No refund after 24hrs of plan activation
+        </div>
+
+    </div>
+
+    <script>
+    // Initialize Cashfree. Change "production" to "sandbox" if you are testing.
+    const cashfree = Cashfree({ mode: "production" });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const continueBtn = document.getElementById('continueBtn');
+        const codeInput = document.getElementById('daylineCodeInput');
+
+        // Listen for the Continue button click
+        continueBtn.addEventListener('click', () => {
+            const enteredCode = codeInput.value.trim();
+
+            // Basic Validation
+            if (!enteredCode) {
+                alert("Please enter a Dayline code.");
+                return;
+            }
+
+            if (!enteredCode.toUpperCase().startsWith("DL-")) {
+                alert("Invalid code format. Codes usually start with DL-");
+                return;
+            }
+
+            // Change button state to show it's loading
+            const originalText = continueBtn.innerHTML;
+            continueBtn.innerHTML = 'Processing... <i class="fa-solid fa-spinner fa-spin"></i>';
+            continueBtn.disabled = true;
+
+            // Call the Vercel backend processing function
+            processDaylineCode(enteredCode)
+                .then(() => {
+                    // Reset button if you stay on the page (usually Cashfree takes over)
+                    continueBtn.innerHTML = originalText;
+                    continueBtn.disabled = false;
+                })
+                .catch((error) => {
+                    alert(error.message || "An error occurred. Please try again.");
+                    continueBtn.innerHTML = originalText;
+                    continueBtn.disabled = false;
+                });
+        });
+
+        // Allow pressing "Enter" on the keyboard to trigger the button
+        codeInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                continueBtn.click();
+            }
+        });
+    });
+
+    // The real function that talks to your Vercel /api endpoint
+    async function processDaylineCode(code) {
+        console.log("Sending code to Vercel backend:", code);
+
+        const response = await fetch('/api/initiate-upgrade', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                code: code,
+                planId: "299" // NOTE: Ensure this matches your Cashfree plan ID
+            })
+        });
+
+        const data = await response.json();
+
+        // Handle errors from the backend (e.g. invalid code, expired, etc.)
+        if (!response.ok) {
+            throw new Error(data.error || "Failed to verify code.");
+        }
+
+        // Open Cashfree Checkout Modal
+        let checkoutOptions = {
+            paymentSessionId: data.payment_session_id,
+            redirectTarget: "_self" 
+        };
+        
+        cashfree.checkout(checkoutOptions);
+    }
+    </script>
+
+</body>
+</html>
