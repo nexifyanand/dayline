@@ -291,6 +291,9 @@
     <!-- Script Logic -->
     <script>
         const cashfree = Cashfree({ mode: "production" }); 
+        
+        // Define your Google Apps Script URL here
+        const APP_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzHR59_mQJUu6v5aGSabdAh8rlPl3a3qbPVshV9IEIQwSuXj2mfZvBqqwBkFjFm6qab/exec";
 
         // 1. Grab token from URL
         const params = new URLSearchParams(window.location.search);
@@ -387,7 +390,7 @@
         planCards.forEach(card => card.addEventListener('click', () => selectPlan(card)));
         termsCheck.addEventListener('change', updatePayButton);
 
-        // 4. NEXIFYLABS PROMO CODE LOGIC (Ported from Android)
+        // 4. NEXIFYLABS PROMO CODE VERIFICATION (Hits Apps Script)
         document.getElementById('applyPromoBtn').addEventListener('click', async () => {
             const codeInput = couponInput.value.trim();
             const btn = document.getElementById('applyPromoBtn');
@@ -405,8 +408,7 @@
             btn.disabled = true;
 
             try {
-                // Build the NexifyLabs URL exactly like Android RequestNetwork
-                const url = new URL("https://script.google.com/macros/s/AKfycbzHR59_mQJUu6v5aGSabdAh8rlPl3a3qbPVshV9IEIQwSuXj2mfZvBqqwBkFjFm6qab/exec");
+                const url = new URL(APP_SCRIPT_URL);
                 url.searchParams.append("api_key", "NEXIFY_SECRET_KEY_987654");
                 url.searchParams.append("action", "verify");
                 url.searchParams.append("couponCode", codeInput);
@@ -414,7 +416,6 @@
                 url.searchParams.append("userId", sessionUser);
                 url.searchParams.append("planAmount", basePrice.toString());
 
-                // Send GET Request
                 const response = await fetch(url);
                 const res = await response.json();
 
@@ -423,9 +424,8 @@
                     finalPriceToPay = parseInt(res.finalPrice);
                     const originalPrice = parseInt(res.originalPrice);
 
-                    // Update UI (Mimics Android View Updates)
-                    promoContainer.style.display = "none"; // Hide input layout
-                    bannerSuccess.style.display = "flex";  // Show success banner
+                    promoContainer.style.display = "none"; 
+                    bannerSuccess.style.display = "flex";  
                     
                     document.getElementById('tvSavedAmount').textContent = `You saved ₹${discountAmount}`;
                     document.getElementById('promoMessageText').textContent = res.message || "Coupon applied successfully!";
@@ -448,7 +448,7 @@
             }
         });
 
-        // 5. Handle Secure Cashfree Payment
+        // 5. SECURE CASHFREE PAYMENT & GOOGLE SHEETS SYNC
         payBtn.addEventListener('click', async () => {
             if (finalPriceToPay === 0 || !termsCheck.checked) return;
 
@@ -457,31 +457,76 @@
             payBtn.disabled = true;
 
             try {
-                // Send the final discounted price to Vercel
-                const response = await fetch('/api/create-order', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        code: token, 
-                        planPrice: finalPriceToPay, // Use discounted price
-                        couponApplied: activeCoupon // Optional: track it in backend
-                    })
-                });
+                // Step A: Ask Apps Script to create order and log 'INITIATED'
+                const createUrl = new URL(APP_SCRIPT_URL);
+                createUrl.searchParams.append("api_key", "NEXIFY_SECRET_KEY_987654");
+                createUrl.searchParams.append("action", "create_order");
+                createUrl.searchParams.append("planAmount", finalPriceToPay.toString());
+                createUrl.searchParams.append("userId", sessionUser); 
+                createUrl.searchParams.append("appName", "Dayline");
+                if (activeCoupon) {
+                    createUrl.searchParams.append("couponCode", activeCoupon);
+                }
 
+                const response = await fetch(createUrl);
                 const data = await response.json();
-                if (!response.ok) throw new Error(data.error || "Payment failed to initialize.");
 
+                if (data.status !== "success") {
+                    throw new Error(data.message || "Payment failed to initialize.");
+                }
+
+                const orderId = data.order_id;
+                const paymentSessionId = data.payment_session_id;
+
+                // Step B: Launch Cashfree Modal over the screen
                 cashfree.checkout({
-                    paymentSessionId: data.payment_session_id,
-                    redirectTarget: "_self" 
+                    paymentSessionId: paymentSessionId,
+                    redirectTarget: "_modal" 
+                }).then(async (result) => {
+                    
+                    if (result.error) {
+                        // User cancelled or payment failed - mark as 'FAILED' in sheets
+                        await finalizeSheetUpdate(orderId, "FAILED", activeCoupon);
+                        alert(result.error.message || "Payment cancelled.");
+                        payBtn.innerHTML = originalBtnHtml;
+                        updatePayButton();
+                    }
+                    
+                    if (result.paymentDetails) {
+                        // Step C: Payment Successful! Mark as 'SUCCESS' in sheets before redirecting
+                        payBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Finalizing...';
+                        
+                        await finalizeSheetUpdate(orderId, "SUCCESS", activeCoupon);
+                        
+                        window.location.href = "/success"; // Redirect to your success page
+                    }
                 });
 
             } catch (error) {
-                alert(error.message);
+                alert("Server Error: " + error.message);
                 payBtn.innerHTML = originalBtnHtml;
                 updatePayButton();
             }
         });
+
+        // Helper function to update Google Sheets in the background silently
+        async function finalizeSheetUpdate(orderId, status, coupon) {
+            try {
+                const finalizeUrl = new URL(APP_SCRIPT_URL);
+                finalizeUrl.searchParams.append("api_key", "NEXIFY_SECRET_KEY_987654");
+                finalizeUrl.searchParams.append("action", "finalize_payment");
+                finalizeUrl.searchParams.append("orderId", orderId);
+                finalizeUrl.searchParams.append("paymentStatus", status);
+                finalizeUrl.searchParams.append("userId", sessionUser); 
+                if (coupon) {
+                    finalizeUrl.searchParams.append("couponCode", coupon);
+                }
+                
+                await fetch(finalizeUrl);
+            } catch (e) {
+                console.error("Failed to update Sheets:", e);
+            }
+        }
     </script>
 </body>
 </html>
