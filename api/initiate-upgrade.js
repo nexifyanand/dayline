@@ -2,13 +2,20 @@ const { initializeApp, getApps, cert } = require("firebase-admin/app");
 const { getDatabase } = require("firebase-admin/database");
 const { Cashfree } = require("cashfree-pg");
 
+// BULLETPROOF PRIVATE KEY FORMATTER
+let formattedPrivateKey = process.env.FIREBASE_PRIVATE_KEY;
+if (formattedPrivateKey) {
+    // This removes any accidental quotes and fixes line breaks perfectly
+    formattedPrivateKey = formattedPrivateKey.replace(/"/g, '').replace(/\\n/g, '\n');
+}
+
 // 1. Initialize Firebase Admin safely using modern modular syntax
 if (getApps().length === 0) {
     initializeApp({
         credential: cert({
             projectId: process.env.FIREBASE_PROJECT_ID,
             clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-            privateKey: process.env.FIREBASE_PRIVATE_KEY ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n') : undefined,
+            privateKey: formattedPrivateKey,
         }),
         databaseURL: process.env.FIREBASE_DATABASE_URL
     });
