@@ -327,8 +327,8 @@
     });
 
     // The real function that talks to your Vercel /api endpoint
-    async function processDaylineCode(code) {
-    console.log("Sending code to Vercel backend:", code);
+   async function processDaylineCode(code) {
+    console.log("Verifying code:", code);
     
     try {
         const response = await fetch('/api/initiate-upgrade', {
@@ -336,37 +336,30 @@
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ code: code, planId: "299" })
+            body: JSON.stringify({ code: code }) // No planId needed here anymore
         });
 
-        // SAFE PARSING: Check if the response is actually JSON first
         const contentType = response.headers.get("content-type");
         let data;
         
         if (contentType && contentType.indexOf("application/json") !== -1) {
             data = await response.json();
         } else {
-            // If Vercel crashes and sends text/HTML, we catch it here
             const textError = await response.text();
-            console.error("Vercel Server Error:", textError);
-            throw new Error("The server is currently unavailable. Please check the Vercel Logs.");
+            throw new Error("The server is currently unavailable.");
         }
 
-        // Check if our backend intentionally threw an error (like an invalid code)
         if (!response.ok) {
             throw new Error(data.error || "Failed to verify code.");
         }
         
-        // Open Cashfree UI with the returned session ID
-        let checkoutOptions = {
-            paymentSessionId: data.payment_session_id,
-            redirectTarget: "_self" 
-        };
-        cashfree.checkout(checkoutOptions);
+        // SUCCESS: Redirect to the new checkout page and pass the code in the URL!
+        window.location.href = `/checkout?code=${code}`;
 
     } catch (error) {
         throw new Error(error.message);
     }
+}
 }
     </script>
 
