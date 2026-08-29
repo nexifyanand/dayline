@@ -7,7 +7,7 @@ if (!admin.apps.length) {
         credential: admin.credential.cert({
             projectId: process.env.FIREBASE_PROJECT_ID,
             clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-            privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+            privateKey: process.env.FIREBASE_PRIVATE_KEY ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n') : undefined,
         }),
         databaseURL: process.env.FIREBASE_DATABASE_URL
     });
@@ -17,7 +17,8 @@ Cashfree.XClientId = process.env.CASHFREE_APP_ID;
 Cashfree.XClientSecret = process.env.CASHFREE_SECRET;
 Cashfree.XEnvironment = Cashfree.Environment.PRODUCTION; 
 
-export default async function handler(req, res) {
+// FIX: Using module.exports instead of export default
+module.exports = async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).send({ message: 'Only POST requests allowed' });
 
     const { code, planId } = req.body;
@@ -56,4 +57,4 @@ export default async function handler(req, res) {
         console.error("Backend Error:", error);
         return res.status(500).json({ error: 'Payment gateway error' });
     }
-}
+};
