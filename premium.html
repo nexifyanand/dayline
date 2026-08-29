@@ -96,7 +96,57 @@
         /* Footer Text */
         .footer-terms { text-align: center; color: var(--text-muted); font-size: 12px; padding-bottom: 40px; display: flex; align-items: center; justify-content: center; gap: 10px; }
         .footer-terms i { color: var(--primary); }
+/* --- MOBILE RESPONSIVENESS --- */
+@media (max-width: 768px) {
+    
+    /* 1. Stack the Hero Section */
+    .hero {
+        flex-direction: column;
+        padding: 30px 0;
+        gap: 40px;
+    }
+    .hero-left {
+        max-width: 100%;
+        text-align: center; /* Centers the text on mobile */
+    }
+    .hero-left h1 {
+        font-size: 36px; /* Slightly smaller text for mobile */
+    }
+    .trust-badges {
+        justify-content: center;
+        flex-wrap: wrap; /* Allows badges to wrap if they run out of space */
+    }
 
+    /* 2. Stack the How It Works Steps */
+    .steps {
+        flex-direction: column;
+        align-items: center;
+        gap: 40px;
+    }
+    .step {
+        max-width: 100%;
+    }
+
+    /* 3. Stack the Bottom Features */
+    .bottom-features {
+        flex-direction: column;
+        gap: 30px;
+        padding: 30px 20px;
+    }
+    .feature {
+        max-width: 100%;
+    }
+
+    /* 4. Adjust the Header for small screens */
+    header {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 15px;
+    }
+    .nav-links {
+        display: none; /* Hides the navigation links on mobile to save space */
+    }
+}
     </style>
 </head>
 <body>
