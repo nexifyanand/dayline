@@ -1,15 +1,15 @@
 const { initializeApp, getApps, cert } = require("firebase-admin/app");
 const { getDatabase } = require("firebase-admin/database");
-const { Cashfree } = require("cashfree-pg");
+const { Cashfree, CFEnvironment } = require("cashfree-pg"); // Added CFEnvironment
 
 // BULLETPROOF PRIVATE KEY FORMATTER
 let formattedPrivateKey = process.env.FIREBASE_PRIVATE_KEY;
 if (formattedPrivateKey) {
-    // This removes any accidental quotes and fixes line breaks perfectly
+    // Removes accidental quotes and fixes line breaks perfectly
     formattedPrivateKey = formattedPrivateKey.replace(/"/g, '').replace(/\\n/g, '\n');
 }
 
-// 1. Initialize Firebase Admin safely using modern modular syntax
+// 1. Initialize Firebase Admin safely
 if (getApps().length === 0) {
     initializeApp({
         credential: cert({
@@ -21,10 +21,10 @@ if (getApps().length === 0) {
     });
 }
 
-// 2. Initialize Cashfree
+// 2. Initialize Cashfree using the new Environment syntax
 Cashfree.XClientId = process.env.CASHFREE_APP_ID;
 Cashfree.XClientSecret = process.env.CASHFREE_SECRET;
-Cashfree.XEnvironment = Cashfree.Environment.PRODUCTION; 
+Cashfree.XEnvironment = CFEnvironment ? CFEnvironment.PRODUCTION : "PRODUCTION"; 
 
 // 3. Main Serverless Function
 module.exports = async function handler(req, res) {
