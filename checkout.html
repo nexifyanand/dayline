@@ -118,8 +118,8 @@
         <!-- SUCCESS UI -->
         <div id="successState">
             <i class="fa-solid fa-circle-check success-icon"></i>
-            <h2 style="margin: 0 0 10px 0;">Code Verified!</h2>
-            <p style="color: var(--text-muted); font-size: 14px; margin: 0;">Your Dayline code is securely linked to the following account:</p>
+            <h2 style="margin: 0 0 10px 0;">Code Found</h2>
+            <p style="color: var(--text-muted); font-size: 14px; margin: 0;">Confirm account details and continue</p>
             
             <div class="account-card">
                 <div class="account-label">Linked Account</div>
@@ -130,7 +130,7 @@
             </div>
 
             <a href="#" id="continueBtn" class="btn-continue">
-                Select Plan <i class="fa-solid fa-arrow-right"></i>
+                Continue to Plans <i class="fa-solid fa-arrow-right"></i>
             </a>
         </div>
 
@@ -138,11 +138,10 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
-            // 1. Grab the code from the URL (supports both ?code= and ?token=)
+            // 1. Grab the code from the URL 
             const params = new URLSearchParams(window.location.search);
             const token = params.get('code') || params.get('token');
 
-            // If someone navigates here without a code, kick them back to the start
             if (!token) {
                 window.location.href = '/premium';
                 return;
@@ -173,7 +172,6 @@
                 document.getElementById('continueBtn').href = `/paymentcheckout_after_checkout?token=${encodeURIComponent(token)}`;
 
             } catch (error) {
-                // If the code is fake, expired, or used, alert them and kick them out
                 alert(error.message);
                 window.location.href = '/premium';
             }
