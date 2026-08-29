@@ -3,17 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dayline Checkout</title>
+    <title>Dayline - Verify Account</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
     <style>
         :root {
             --primary: #5B4294;
+            --primary-light: #f4f1fa;
             --bg-body: #fbfcff;
+            --text-dark: #1a1a2e;
+            --text-muted: #6b6b83;
             --card-shadow: 0 10px 30px rgba(91, 66, 148, 0.08);
         }
+
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: 'Inter', -apple-system, sans-serif;
             background: var(--bg-body);
             display: flex;
             justify-content: center;
@@ -22,29 +25,67 @@
             margin: 0;
             padding: 20px;
             box-sizing: border-box;
+            color: var(--text-dark);
         }
+
         .checkout-box {
             background: white;
-            padding: 35px;
+            padding: 40px 35px;
             border-radius: 16px;
             box-shadow: var(--card-shadow);
-            max-width: 440px;
+            max-width: 400px;
             width: 100%;
             text-align: center;
+            position: relative;
+            overflow: hidden;
         }
-        .badge {
-            background: #f4f1fa;
-            color: var(--primary);
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 13px;
+
+        /* --- LOADING STATE --- */
+        #loadingState {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        #loadingState i { font-size: 40px; color: var(--primary); margin-bottom: 20px; }
+        #loadingState h2 { margin: 0 0 10px 0; }
+        #loadingState p { color: var(--text-muted); font-size: 14px; margin: 0; }
+
+        /* --- SUCCESS STATE (Hidden by default) --- */
+        #successState {
+            display: none;
+        }
+        .success-icon { color: #10b981; font-size: 54px; margin-bottom: 15px; }
+        
+        .account-card {
+            background: var(--primary-light);
+            border: 1px solid #e9e4f5;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            margin: 25px 0;
+        }
+        .account-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
             font-weight: 600;
-            display: inline-block;
-            margin-bottom: 15px;
         }
-        .btn-pay {
+        .account-name {
+            font-size: 20px;
+            color: var(--primary);
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-continue {
             width: 100%;
-            padding: 14px;
+            padding: 16px;
             background: var(--primary);
             color: white;
             border: none;
@@ -52,34 +93,91 @@
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
-            margin-top: 20px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-sizing: border-box;
+            transition: opacity 0.2s;
         }
+        .btn-continue:hover { opacity: 0.9; }
     </style>
 </head>
 <body>
 
     <div class="checkout-box">
-        <div class="badge" id="codeBadge">Code Verified</div>
-        <h2 style="margin: 0 0 10px 0;">Complete Your Upgrade</h2>
-        <p style="color: #6b6b83; font-size: 14px; margin-bottom: 25px;">Select your plan and pay securely with Cashfree.</p>
         
-        <div style="background: #fafafa; border: 1px solid #eee; border-radius: 10px; padding: 15px; text-align: left; margin-bottom: 20px;">
-            <div style="font-size: 13px; color: #888;">Selected Code</div>
-            <strong id="displayCode" style="font-size: 17px; color: var(--primary);">-</strong>
+        <!-- SECURE LOADER -->
+        <div id="loadingState">
+            <i class="fa-solid fa-circle-notch fa-spin"></i>
+            <h2>Verifying Code...</h2>
+            <p>Connecting to Dayline securely</p>
         </div>
 
-        <button class="btn-pay" id="payBtn">Pay with Cashfree</button>
+        <!-- SUCCESS UI -->
+        <div id="successState">
+            <i class="fa-solid fa-circle-check success-icon"></i>
+            <h2 style="margin: 0 0 10px 0;">Code Verified!</h2>
+            <p style="color: var(--text-muted); font-size: 14px; margin: 0;">Your Dayline code is securely linked to the following account:</p>
+            
+            <div class="account-card">
+                <div class="account-label">Linked Account</div>
+                <div class="account-name">
+                    <i class="fa-solid fa-user-shield"></i>
+                    <span id="displayUser">Loading...</span>
+                </div>
+            </div>
+
+            <a href="#" id="continueBtn" class="btn-continue">
+                Select Plan <i class="fa-solid fa-arrow-right"></i>
+            </a>
+        </div>
+
     </div>
 
     <script>
-        const params = new URLSearchParams(window.location.search);
-        const code = params.get('code');
+        document.addEventListener('DOMContentLoaded', async () => {
+            // 1. Grab the code from the URL (supports both ?code= and ?token=)
+            const params = new URLSearchParams(window.location.search);
+            const token = params.get('code') || params.get('token');
 
-        if (!code) {
-            window.location.href = '/premium';
-        } else {
-            document.getElementById('displayCode').textContent = code;
-        }
+            // If someone navigates here without a code, kick them back to the start
+            if (!token) {
+                window.location.href = '/premium';
+                return;
+            }
+
+            try {
+                // 2. Ask the backend to verify the code and fetch the masked name
+                const response = await fetch('/api/initiate-upgrade', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: token })
+                });
+
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || "This code is invalid or expired.");
+                }
+
+                // 3. SUCCESS: Hide loader and show the verified account!
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('successState').style.display = 'block';
+                
+                // Inject the masked name from the database
+                document.getElementById('displayUser').textContent = data.accountName || "User Account";
+
+                // 4. Set the link to pass ONLY the secure token to the final payment page
+                document.getElementById('continueBtn').href = `/paymentcheckout_after_checkout?token=${encodeURIComponent(token)}`;
+
+            } catch (error) {
+                // If the code is fake, expired, or used, alert them and kick them out
+                alert(error.message);
+                window.location.href = '/premium';
+            }
+        });
     </script>
 </body>
 </html>

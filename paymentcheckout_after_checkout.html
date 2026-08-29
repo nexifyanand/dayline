@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dayline - Secure Checkout</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
+    <style>
+        :root {
+            --primary: #5B4294;
+            --primary-light: #f4f1fa;
+            --primary-hover: #4a3578;
+            --text-dark: #1a1a2e;
+            --text-muted: #6b6b83;
+            --bg-body: #fbfcff;
+            --border-color: #e9e4f5;
+            --card-shadow: 0 4px 20px rgba(91, 66, 148, 0.05);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-dark);
+            margin: 0;
+            padding: 0;
+            line-height: 1.5;
+        }
+
+        /* --- SECURITY LOADER --- */
+        #securityLoader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-body);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        #securityLoader i { font-size: 40px; color: var(--primary); margin-bottom: 20px; }
+        #securityLoader h2 { margin: 0 0 10px 0; color: var(--text-dark); }
+        #securityLoader p { margin: 0; color: var(--text-muted); font-size: 14px; }
+        
+        /* Main UI (Hidden by default until verified) */
+        #mainAppUI {
+            display: none; 
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 0 20px 60px 20px;
+        }
+
+        header {
+            padding: 24px 0;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 30px;
+        }
+        .logo { font-size: 24px; font-weight: bold; color: var(--text-dark); }
+
+        .user-info-bar {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 40px;
+            box-shadow: var(--card-shadow);
+        }
+        .info-group { display: flex; flex-direction: column; gap: 4px; }
+        .info-label { font-size: 12px; color: var(--text-muted); }
+        .info-value { font-size: 14px; font-weight: 600; color: var(--text-dark); }
+        .badge-plan { background: var(--primary-light); color: var(--primary); padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; border: 1px solid #dcd3ef; text-transform: capitalize; display: inline-block; }
+
+        .pricing-header { text-align: center; margin-bottom: 40px; }
+        .pricing-header h1 { font-size: 32px; margin: 0 0 10px 0; }
+        .pricing-header p { color: var(--text-muted); margin: 0 0 15px 0; }
+        .secure-badge { font-size: 13px; color: var(--primary); display: inline-flex; align-items: center; gap: 6px; }
+
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+        .plan-card {
+            background: white; border: 1px solid var(--border-color); border-radius: 16px; padding: 25px 20px; position: relative; display: flex; flex-direction: column; cursor: pointer; transition: all 0.2s ease;
+        }
+        .plan-card:hover { border-color: var(--primary); box-shadow: var(--card-shadow); }
+        .plan-card.active { border: 2px solid var(--primary); background: #faf8ff; }
+        .radio-btn { width: 18px; height: 18px; border: 2px solid #ccc; border-radius: 50%; position: absolute; top: 20px; left: 20px; }
+        .plan-card.active .radio-btn { border-color: var(--primary); border-width: 5px; }
+        .best-value-badge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: var(--primary); color: white; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; white-space: nowrap; }
+
+        .plan-icon { font-size: 24px; color: var(--primary); margin: 20px 0 15px 0; text-align: center; }
+        .plan-name { text-align: center; font-weight: 600; margin-bottom: 5px; }
+        .plan-price { text-align: center; font-size: 32px; font-weight: bold; margin-bottom: 5px; }
+        .plan-duration { text-align: center; font-size: 12px; color: var(--text-muted); margin-bottom: 20px; }
+        .plan-features { flex: 1; list-style: none; padding: 0; margin: 0 0 20px 0; }
+        .plan-features li { font-size: 12px; color: var(--text-dark); margin-bottom: 12px; display: flex; align-items: flex-start; gap: 8px; }
+        .plan-features li i { color: var(--primary); margin-top: 2px; }
+
+        .btn-select { width: 100%; padding: 10px; border-radius: 8px; font-size: 14px; font-weight: 600; background: white; border: 1px solid var(--primary); color: var(--primary); cursor: pointer; }
+        .plan-card.active .btn-select { background: var(--primary-light); border: none; }
+        .plan-card.active[data-plan="monthly"] .btn-select, .plan-card.active[data-plan="yearly"] .btn-select, .plan-card.active[data-plan="lifetime"] .btn-select { background: var(--primary); color: white; }
+
+        .summary-box { background: white; border: 1px solid var(--border-color); border-radius: 16px; padding: 30px; margin-bottom: 30px; box-shadow: var(--card-shadow); }
+        .summary-header { font-size: 18px; font-weight: 600; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+        .summary-row { display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 14px; color: var(--text-muted); }
+        .summary-row.total { font-size: 18px; font-weight: bold; color: var(--text-dark); border-top: 1px solid var(--border-color); padding-top: 15px; margin-top: 15px; }
+        
+        .terms-check { display: flex; gap: 10px; font-size: 13px; color: var(--text-muted); margin-bottom: 20px; align-items: center; }
+        .terms-check input { width: 16px; height: 16px; accent-color: var(--primary); cursor: pointer; }
+        .terms-check a { color: var(--primary); text-decoration: none; }
+
+        .btn-pay { width: 100%; padding: 16px; background: var(--primary); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: background 0.2s; }
+        .btn-pay:hover { background: var(--primary-hover); }
+        .btn-pay:disabled { opacity: 0.7; cursor: not-allowed; }
+        .secure-footer { text-align: center; font-size: 12px; color: var(--text-muted); margin-top: 15px; }
+
+        @media (max-width: 900px) {
+            .pricing-grid { grid-template-columns: repeat(2, 1fr); }
+            .user-info-bar { flex-direction: column; gap: 15px; }
+        }
+        @media (max-width: 600px) {
+            .pricing-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SECURITY LOAD SCREEN -->
+    <div id="securityLoader">
+        <i class="fa-solid fa-circle-notch fa-spin"></i>
+        <h2>Securing Checkout...</h2>
+        <p>Verifying your Dayline session</p>
+    </div>
+
+    <!-- MAIN APP UI (Hidden until verified) -->
+    <div id="mainAppUI">
+        <header>
+            <div class="container">
+                <div class="logo">Dayline</div>
+            </div>
+        </header>
+
+        <div class="container">
+            <!-- DYNAMIC USER INFO BAR -->
+            <div class="user-info-bar">
+                <div class="info-group">
+                    <span class="info-label">Dayline Code</span>
+                    <span class="info-value" id="displayCode">...</span>
+                </div>
+                <div class="info-group">
+                    <span class="info-label">User Account</span>
+                    <span class="info-value" id="displayUser">...</span>
+                </div>
+                <div class="info-group">
+                    <span class="info-label">Current Plan</span>
+                    <div><span class="badge-plan" id="displayPlan">...</span></div>
+                </div>
+            </div>
+
+            <div class="pricing-header">
+                <h1>Choose your premium plan</h1>
+                <p>Unlock unlimited access to all premium features.</p>
+                <div class="secure-badge"><i class="fa-solid fa-shield-check"></i> One-time payment. No auto renewal.</div>
+            </div>
+
+            <div class="pricing-grid">
+                <!-- Free Plan -->
+                <div class="plan-card active" data-plan="free" data-price="0">
+                    <div class="radio-btn"></div>
+                    <div class="plan-icon"><i class="fa-solid fa-gift"></i></div>
+                    <div class="plan-name">Free</div>
+                    <div class="plan-price">₹0</div>
+                    <div class="plan-duration">Forever</div>
+                    <ul class="plan-features">
+                        <li><i class="fa-regular fa-circle-check"></i> Daily journaling</li>
+                        <li><i class="fa-regular fa-circle-check"></i> Mood tracking</li>
+                    </ul>
+                    <button class="btn-select">Current Plan</button>
+                </div>
+
+                <!-- Monthly Plan -->
+                <div class="plan-card" data-plan="monthly" data-price="49">
+                    <div class="radio-btn"></div>
+                    <div class="plan-icon"><i class="fa-regular fa-calendar"></i></div>
+                    <div class="plan-name">Monthly</div>
+                    <div class="plan-price">₹49</div>
+                    <div class="plan-duration">Full access for 30 days</div>
+                    <ul class="plan-features">
+                        <li><i class="fa-solid fa-circle-check"></i> All premium features</li>
+                        <li><i class="fa-solid fa-circle-check"></i> Cloud backup & sync</li>
+                    </ul>
+                    <button class="btn-select">Select Plan</button>
+                </div>
+
+                <!-- Yearly Plan -->
+                <div class="plan-card" data-plan="yearly" data-price="299">
+                    <div class="best-value-badge">Best Value</div>
+                    <div class="radio-btn"></div>
+                    <div class="plan-icon"><i class="fa-solid fa-crown"></i></div>
+                    <div class="plan-name">Yearly</div>
+                    <div class="plan-price">₹299</div>
+                    <div class="plan-duration">Full access for 1 year</div>
+                    <ul class="plan-features">
+                        <li><i class="fa-solid fa-circle-check"></i> All premium features</li>
+                        <li><i class="fa-solid fa-circle-check"></i> Priority support</li>
+                    </ul>
+                    <button class="btn-select">Select Plan</button>
+                </div>
+
+                <!-- Lifetime Plan -->
+                <div class="plan-card" data-plan="lifetime" data-price="799">
+                    <div class="radio-btn"></div>
+                    <div class="plan-icon"><i class="fa-regular fa-gem"></i></div>
+                    <div class="plan-name">Lifetime</div>
+                    <div class="plan-price">₹799</div>
+                    <div class="plan-duration">Full access forever</div>
+                    <ul class="plan-features">
+                        <li><i class="fa-solid fa-circle-check"></i> All premium features</li>
+                        <li><i class="fa-solid fa-circle-check"></i> Lifetime updates</li>
+                    </ul>
+                    <button class="btn-select">Select Plan</button>
+                </div>
+            </div>
+
+            <!-- Payment Summary -->
+            <div class="summary-box">
+                <div class="summary-header">
+                    <i class="fa-solid fa-receipt" style="color: var(--primary);"></i> Payment Summary
+                </div>
+                
+                <div class="summary-row">
+                    <span>Selected Plan</span>
+                    <span class="badge-plan" id="summaryPlanName" style="background: var(--primary); color: white;">Free</span>
+                </div>
+                <div class="summary-row">
+                    <span>Subtotal</span>
+                    <span id="summarySubtotal">₹0</span>
+                </div>
+                <div class="summary-row total">
+                    <span>Total</span>
+                    <span id="summaryTotal">₹0</span>
+                </div>
+
+                <div class="terms-check">
+                    <input type="checkbox" id="termsCheck">
+                    <label for="termsCheck">I agree to the <a href="#">Terms & Conditions</a> and <a href="#">Privacy Policy</a>.</label>
+                </div>
+
+                <button class="btn-pay" id="payBtn" disabled>
+                    <i class="fa-solid fa-lock"></i> Continue to Payment
+                </button>
+                <div class="secure-footer">
+                    <i class="fa-solid fa-shield-check"></i> Your payment is secure and encrypted.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script Logic -->
+    <script>
+        const cashfree = Cashfree({ mode: "production" }); // Change to "production" for real payments
+
+        // 1. Grab token from URL
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get('token');
+
+        // Immediately kick out if no token is present
+        if (!token) {
+            window.location.href = '/premium';
+        }
+
+        // 2. VERIFY TOKEN WITH BACKEND ON PAGE LOAD
+        async function verifySession() {
+            try {
+                // We reuse your initiate-upgrade API to securely check the code
+                const response = await fetch('/api/initiate-upgrade', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: token })
+                });
+
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || "Invalid session.");
+                }
+
+                // SUCCESS: Inject real, secure data from database, ignoring URL tampering!
+                document.getElementById('displayCode').textContent = token;
+                document.getElementById('displayUser').textContent = data.accountName || "User";
+                document.getElementById('displayPlan').textContent = data.currentPlan || "Free";
+
+                // Remove the loading screen and show the app
+                document.getElementById('securityLoader').style.display = 'none';
+                document.getElementById('mainAppUI').style.display = 'block';
+
+            } catch (error) {
+                alert("This session is invalid, expired, or has already been used.");
+                window.location.href = '/premium'; // Kick them out
+            }
+        }
+
+        // Run verification immediately
+        verifySession();
+
+        // 3. UI Interaction Logic
+        const planCards = document.querySelectorAll('.plan-card');
+        const summaryPlanName = document.getElementById('summaryPlanName');
+        const summarySubtotal = document.getElementById('summarySubtotal');
+        const summaryTotal = document.getElementById('summaryTotal');
+        const payBtn = document.getElementById('payBtn');
+        const termsCheck = document.getElementById('termsCheck');
+
+        let selectedPrice = 0;
+
+        function selectPlan(card) {
+            planCards.forEach(c => c.classList.remove('active'));
+            card.classList.add('active');
+
+            const planName = card.querySelector('.plan-name').textContent;
+            selectedPrice = parseInt(card.getAttribute('data-price'));
+
+            summaryPlanName.textContent = planName;
+            summarySubtotal.textContent = `₹${selectedPrice}`;
+            summaryTotal.textContent = `₹${selectedPrice}`;
+
+            updatePayButton();
+        }
+
+        function updatePayButton() {
+            if (selectedPrice === 0 || !termsCheck.checked) {
+                payBtn.disabled = true;
+                payBtn.innerHTML = '<i class="fa-solid fa-lock"></i> Continue to Payment';
+            } else {
+                payBtn.disabled = false;
+                payBtn.innerHTML = 'Complete Checkout <i class="fa-solid fa-arrow-right"></i>';
+            }
+        }
+
+        planCards.forEach(card => card.addEventListener('click', () => selectPlan(card)));
+        termsCheck.addEventListener('change', updatePayButton);
+
+        // 4. Handle Secure Cashfree Payment
+        payBtn.addEventListener('click', async () => {
+            if (selectedPrice === 0 || !termsCheck.checked) return;
+
+            payBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Connecting securely...';
+            payBtn.disabled = true;
+
+            try {
+                // Secondary Backend Check just before charging
+                const response = await fetch('/api/create-order', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        code: token, 
+                        planPrice: selectedPrice 
+                    })
+                });
+
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || "Payment failed to initialize.");
+
+                cashfree.checkout({
+                    paymentSessionId: data.payment_session_id,
+                    redirectTarget: "_self" 
+                });
+
+            } catch (error) {
+                alert(error.message);
+                updatePayButton();
+            }
+        });
+    </script>
+</body>
+</html>
