@@ -289,18 +289,21 @@
     </div>
 
     <!-- Script Logic -->
+  <!-- Script Logic -->
     <script>
-        const cashfree = Cashfree({ mode: "production" }); 
-        
+        const cashfree = Cashfree({ mode: "production" }); // Use "sandbox" if testing with sandbox keys
+
         // Define your Google Apps Script URL here
-        const APP_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzRy_HM5jPdweME4XYRZMurzGb4HWoTyyAGTw3Z-7h0pxL-bY5x3HPnY5j-LKyiNHh6/exec";
+        const APP_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzHR59_mQJUu6v5aGSabdAh8rlPl3a3qbPVshV9IEIQwSuXj2mfZvBqqwBkFjFm6qab/exec";
 
         // 1. Grab token from URL
         const params = new URLSearchParams(window.location.search);
         const token = params.get('token');
         let sessionUser = "User"; // Will store the user from backend for promo logic
 
-        if (!token) window.location.href = '/premium'; 
+        if (!token) {
+            window.location.href = '/premium';
+        }
 
         // 2. VERIFY TOKEN ON PAGE LOAD
         async function verifySession() {
@@ -320,6 +323,7 @@
                 document.getElementById('displayUser').textContent = sessionUser;
                 document.getElementById('displayPlan').textContent = data.currentPlan || "Free";
 
+                // Remove loading screen and reveal main UI
                 document.getElementById('securityLoader').style.display = 'none';
                 document.getElementById('mainAppUI').style.display = 'block';
 
@@ -328,9 +332,11 @@
                 window.location.href = '/premium';
             }
         }
+        
+        // Execute token verification immediately
         verifySession();
 
-        // 3. UI Interaction Logic
+        // 3. UI Interaction Elements
         const planCards = document.querySelectorAll('.plan-card');
         const summaryPlanName = document.getElementById('summaryPlanName');
         const summarySubtotal = document.getElementById('summarySubtotal');
@@ -344,7 +350,7 @@
         const btnPayText = document.getElementById('btnPayText');
         const termsCheck = document.getElementById('termsCheck');
 
-        // Payment State
+        // Payment State Tracking
         let basePrice = 0;
         let finalPriceToPay = 0;
         let activeCoupon = null;
@@ -360,9 +366,8 @@
             summaryPlanName.textContent = planName;
             summarySubtotal.textContent = `₹${basePrice}`;
             
-            // Clear promo code if user changes plan
+            // Reset applied promo when changing plans
             clearPromo();
-
             updatePayButton();
         }
 
@@ -448,7 +453,7 @@
             }
         });
 
-       // 5. SECURE CASHFREE PAYMENT & GOOGLE SHEETS SYNC
+        // 5. SECURE CASHFREE PAYMENT & GOOGLE SHEETS SYNC
         payBtn.addEventListener('click', async () => {
             if (finalPriceToPay === 0 || !termsCheck.checked) return;
 
@@ -457,7 +462,7 @@
             payBtn.disabled = true;
 
             try {
-                // Step A: Ask Google Apps Script to create the Cashfree order & log 'INITIATED'
+                // Step A: Create Cashfree Order via Google Apps Script
                 const createUrl = new URL(APP_SCRIPT_URL);
                 createUrl.searchParams.append("api_key", "NEXIFY_SECRET_KEY_987654");
                 createUrl.searchParams.append("action", "create_order");
@@ -485,7 +490,7 @@
                 }).then(async (result) => {
                     
                     if (result.error) {
-                        // User cancelled or payment failed - mark as 'FAILED' in sheets
+                        // Mark transaction as FAILED in Sheets if user cancels
                         await finalizeSheetUpdate(orderId, "FAILED", activeCoupon);
                         alert(result.error.message || "Payment cancelled.");
                         payBtn.innerHTML = originalBtnHtml;
@@ -493,12 +498,10 @@
                     }
                     
                     if (result.paymentDetails) {
-                        // Step C: Payment Successful! Mark as 'SUCCESS' in sheets before redirecting
+                        // Step C: Payment Success - Mark SUCCESS in Sheets before redirecting
                         payBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Finalizing...';
-                        
                         await finalizeSheetUpdate(orderId, "SUCCESS", activeCoupon);
-                        
-                        window.location.href = "/success"; // Redirect to your success page
+                        window.location.href = "/success";
                     }
                 });
 
@@ -508,9 +511,8 @@
                 updatePayButton();
             }
         });
-        });
 
-        // Helper function to update Google Sheets in the background silently
+        // Background Helper to sync state to Google Sheets
         async function finalizeSheetUpdate(orderId, status, coupon) {
             try {
                 const finalizeUrl = new URL(APP_SCRIPT_URL);
