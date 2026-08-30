@@ -1,13 +1,11 @@
 const { initializeApp, getApps, cert } = require("firebase-admin/app");
 const { getDatabase } = require("firebase-admin/database");
 
-// BULLETPROOF PRIVATE KEY FORMATTER
 let formattedPrivateKey = process.env.FIREBASE_PRIVATE_KEY;
 if (formattedPrivateKey) {
     formattedPrivateKey = formattedPrivateKey.replace(/"/g, '').replace(/\\n/g, '\n');
 }
 
-// 1. Initialize Firebase Admin safely
 if (getApps().length === 0) {
     initializeApp({
         credential: cert({
@@ -19,38 +17,82 @@ if (getApps().length === 0) {
     });
 }
 
-// 2. Main Verification Function
-module.exports = async function handler(req, res) {
-    if (req.method !== 'POST') return res.status(405).send({ message: 'Only POST requests allowed' });
+function maskName(name) {
+    if (!name) return "U***r";
+    return name.split(' ').map(word => {
+        if (word.length <= 2) return word; 
+        return word.charAt(0) + '*'.repeat(word.length - 2) + word.slice(-1);
+    }).join(' ');
+}
 
-    const { code } = req.body;
-    const db = getDatabase();
+module.exports = async function handler(req, res) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+    if (req.method === 'OPTIONS') return res.status(200).end();
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Only POST requests allowed' });
+
+    const { code } = req.body || {};
+    if (!code) return res.status(400).json({ error: 'Please enter a valid code.' });
 
     try {
-        // A. Verify Code exists
-        const codeSnap = await db.ref(`generated_codes/${code}`).once('value');
-        if (!codeSnap.exists()) return res.status(404).json({ error: 'Invalid code' });
-        
-        const codeData = codeSnap.val();
-        
-        // B. Check Expiration and Usage
-        const isExpired = (Date.now() - codeData.timestamp) > (48 * 60 * 60 * 1000);
-        if (isExpired || codeData.used) return res.status(400).json({ error: 'Code expired or already used' });
+        const db = getDatabase();
+        const codeRef = db.ref(`generated_codes/${code}`);
+        const codeSnap = await codeRef.once('value');
 
-        // C. Check User's current plan
-        const uid = codeData.uid;
-        const userSnap = await db.ref(`users/${uid}`).once('value');
-        const userData = userSnap.val();
+        if (!codeSnap.exists()) return res.status(404).json({ error: 'Invalid code. Code does not exist.' });
+
+        const codeData = codeSnap.val();
+
+        // 1. Check if code was already redeemed after payment
+        if (codeData.used) {
+            return res.status(400).json({ error: 'This code has already been redeemed and completed.' });
+        }
         
-        if (userData && userData.plan === 'Lifetime') {
-            return res.status(400).json({ error: 'User already has a Lifetime plan.' });
+        // 2. Check if code expired (48 hours)
+        const isExpired = (Date.now() - (codeData.timestamp || 0)) > (48 * 60 * 60 * 1000);
+        if (isExpired) return res.status(400).json({ error: 'This code has expired (48-hour limit).' });
+
+        // 3. CONCURRENT LOGIN PREVENTION (Active Session Lock)
+        // If session is active and active within the last 15 minutes, block other users
+        const fifeteenMins = 15 * 60 * 1000;
+        if (codeData.sessionActive && (Date.now() - (codeData.lastActiveTimestamp || 0)) < fifeteenMins) {
+            return res.status(403).json({ error: 'This code is currently in use on another device/browser session.' });
         }
 
-        // D. Success! Code is valid.
-        return res.status(200).json({ success: true, message: 'Code is valid!' });
+        // Lock session to current active request
+        await codeRef.update({
+            sessionActive: true,
+            lastActiveTimestamp: Date.now()
+        });
+
+        const uid = codeData.uid;
+        let safeName = "A*****t";
+        let currentPlan = "Free";
+
+        if (uid) {
+            const userSnap = await db.ref(`users/${uid}`).once('value');
+            const userData = userSnap.val();
+            
+            if (userData && userData.plan === 'Lifetime') {
+                return res.status(400).json({ error: 'User already has a Lifetime plan.' });
+            }
+            if (userData) {
+                if (userData.name) safeName = maskName(userData.name);
+                if (userData.plan) currentPlan = userData.plan;
+            }
+        }
+
+        return res.status(200).json({ 
+            success: true, 
+            code: code, 
+            accountName: safeName, 
+            currentPlan: currentPlan 
+        });
 
     } catch (error) {
         console.error("Backend Error:", error);
-        return res.status(500).json({ error: 'Internal server error while verifying code' });
+        return res.status(500).json({ error: 'Database connection error.' });
     }
 };

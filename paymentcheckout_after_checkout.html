@@ -497,12 +497,21 @@
                         updatePayButton();
                     }
                     
-                    if (result.paymentDetails) {
-                        // Step C: Payment Success - Mark SUCCESS in Sheets before redirecting
-                        payBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Finalizing...';
-                        await finalizeSheetUpdate(orderId, "SUCCESS", activeCoupon);
-                        window.location.href = "/success";
-                    }
+                   if (result.paymentDetails) {
+    // Payment Successful!
+    payBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Finalizing...';
+    
+    // Pass code to Apps Script so it can invalidate it in Firebase
+    await finalizeSheetUpdate(orderId, "SUCCESS", activeCoupon);
+
+    // Set single-use authorization token in session storage
+    sessionStorage.setItem('dayline_payment_success_auth', 'VERIFIED_PAID');
+    sessionStorage.setItem('dayline_completed_code', token);
+    sessionStorage.setItem('dayline_completed_user', sessionUser);
+    
+    // Redirect to the secured success page
+    window.location.href = "/success"; 
+}
                 });
 
             } catch (error) {

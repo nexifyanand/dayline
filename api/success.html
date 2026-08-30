@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dayline - Upgrade Complete</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #5B4294;
+            --primary-light: #f4f1fa;
+            --bg-body: #fbfcff;
+            --text-dark: #1a1a2e;
+            --text-muted: #6b6b83;
+            --card-shadow: 0 10px 30px rgba(91, 66, 148, 0.08);
+            --success: #10b981;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-dark);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* Full Screen Security Loader */
+        #securityLoader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-body);
+            display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999;
+        }
+        #securityLoader i { font-size: 40px; color: var(--primary); margin-bottom: 20px; }
+
+        .success-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px 35px;
+            max-width: 440px;
+            width: 90%;
+            box-shadow: var(--card-shadow);
+            text-align: center;
+            display: none; /* Hidden until security passes */
+        }
+
+        .icon-circle {
+            width: 80px;
+            height: 80px;
+            background: #d1fae5;
+            color: var(--success);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 38px;
+            margin: 0 auto 20px auto;
+        }
+
+        h1 { font-size: 26px; margin: 0 0 10px 0; color: var(--text-dark); }
+        p { color: var(--text-muted); font-size: 14px; margin: 0 0 25px 0; line-height: 1.6; }
+
+        .details-box {
+            background: var(--primary-light);
+            border: 1px solid #e9e4f5;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 25px;
+            text-align: left;
+        }
+
+        .details-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 13px;
+        }
+        .details-row:last-child { margin-bottom: 0; }
+        .details-label { color: var(--text-muted); }
+        .details-val { font-weight: 600; color: var(--text-dark); }
+
+        .btn-app {
+            width: 100%;
+            padding: 16px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            text-decoration: none;
+            box-sizing: border-box;
+            transition: background 0.2s;
+        }
+        .btn-app:hover { background: #4a3578; }
+
+        .security-notice {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Security Check Screen -->
+    <div id="securityLoader">
+        <i class="fa-solid fa-shield-halved fa-spin"></i>
+        <h2>Verifying Payment Authenticity...</h2>
+    </div>
+
+    <!-- Success Content -->
+    <div class="success-card" id="successCard">
+        <div class="icon-circle">
+            <i class="fa-solid fa-check"></i>
+        </div>
+
+        <h1>Upgrade Successful!</h1>
+        <p>Your Dayline code has been redeemed and activated. Your account features have been upgraded immediately.</p>
+
+        <div class="details-box">
+            <div class="details-row">
+                <span class="details-label">Status</span>
+                <span class="details-val" style="color: var(--success);"><i class="fa-solid fa-circle-check"></i> Active</span>
+            </div>
+            <div class="details-row">
+                <span class="details-label">Redeemed Code</span>
+                <span class="details-val" id="resCode">...</span>
+            </div>
+            <div class="details-row">
+                <span class="details-label">Account</span>
+                <span class="details-val" id="resUser">...</span>
+            </div>
+        </div>
+
+        <button class="btn-app" onclick="closeOrRedirect()">
+            <i class="fa-solid fa-mobile-screen"></i> Return to Dayline App
+        </button>
+
+        <div class="security-notice">
+            <i class="fa-solid fa-lock"></i> Session closed. Code invalidated for security.
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Anti-Direct Access Guard: Read authorization from session storage
+            const paymentAuthToken = sessionStorage.getItem('dayline_payment_success_auth');
+            const sessionCode = sessionStorage.getItem('dayline_completed_code');
+            const sessionUser = sessionStorage.getItem('dayline_completed_user');
+
+            // KICK OUT if accessed directly or refreshed without payment token
+            if (!paymentAuthToken || paymentAuthToken !== 'VERIFIED_PAID') {
+                alert("Unauthorized Access. You cannot view this page directly.");
+                window.location.href = '/premium';
+                return;
+            }
+
+            // Immediately clear tokens so the user CANNOT refresh or bookmark this page
+            sessionStorage.removeItem('dayline_payment_success_auth');
+
+            // Inject values
+            document.getElementById('resCode').textContent = sessionCode || 'Redeemed';
+            document.getElementById('resUser').textContent = sessionUser || 'User Account';
+
+            // Show success screen
+            document.getElementById('securityLoader').style.display = 'none';
+            document.getElementById('successCard').style.display = 'block';
+        });
+
+        function closeOrRedirect() {
+            // Clears any remaining session traces and sends back to root
+            sessionStorage.clear();
+            window.location.href = '/premium';
+        }
+    </script>
+</body>
+</html>
