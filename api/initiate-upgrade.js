@@ -45,7 +45,7 @@ module.exports = async function handler(req, res) {
 
         const codeData = codeSnap.val();
 
-        // 1. Check if code was already redeemed after payment
+        // 1. Strict check: Was this code already paid for and redeemed?
         if (codeData.used) {
             return res.status(400).json({ error: 'This code has already been redeemed and completed.' });
         }
@@ -53,19 +53,6 @@ module.exports = async function handler(req, res) {
         // 2. Check if code expired (48 hours)
         const isExpired = (Date.now() - (codeData.timestamp || 0)) > (48 * 60 * 60 * 1000);
         if (isExpired) return res.status(400).json({ error: 'This code has expired (48-hour limit).' });
-
-        // 3. CONCURRENT LOGIN PREVENTION (Active Session Lock)
-        // If session is active and active within the last 15 minutes, block other users
-        const fifeteenMins = 15 * 60 * 1000;
-        if (codeData.sessionActive && (Date.now() - (codeData.lastActiveTimestamp || 0)) < fifeteenMins) {
-            return res.status(403).json({ error: 'This code is currently in use on another device/browser session.' });
-        }
-
-        // Lock session to current active request
-        await codeRef.update({
-            sessionActive: true,
-            lastActiveTimestamp: Date.now()
-        });
 
         const uid = codeData.uid;
         let safeName = "A*****t";
