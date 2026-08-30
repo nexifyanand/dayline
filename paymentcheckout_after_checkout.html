@@ -293,7 +293,7 @@
         const cashfree = Cashfree({ mode: "production" }); 
         
         // Define your Google Apps Script URL here
-        const APP_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzHR59_mQJUu6v5aGSabdAh8rlPl3a3qbPVshV9IEIQwSuXj2mfZvBqqwBkFjFm6qab/exec";
+        const APP_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzRy_HM5jPdweME4XYRZMurzGb4HWoTyyAGTw3Z-7h0pxL-bY5x3HPnY5j-LKyiNHh6/exec";
 
         // 1. Grab token from URL
         const params = new URLSearchParams(window.location.search);
@@ -448,7 +448,7 @@
             }
         });
 
-        // 5. SECURE CASHFREE PAYMENT & GOOGLE SHEETS SYNC
+       // 5. SECURE CASHFREE PAYMENT & GOOGLE SHEETS SYNC
         payBtn.addEventListener('click', async () => {
             if (finalPriceToPay === 0 || !termsCheck.checked) return;
 
@@ -457,7 +457,7 @@
             payBtn.disabled = true;
 
             try {
-                // Step A: Ask Apps Script to create order and log 'INITIATED'
+                // Step A: Ask Google Apps Script to create the Cashfree order & log 'INITIATED'
                 const createUrl = new URL(APP_SCRIPT_URL);
                 createUrl.searchParams.append("api_key", "NEXIFY_SECRET_KEY_987654");
                 createUrl.searchParams.append("action", "create_order");
@@ -478,7 +478,7 @@
                 const orderId = data.order_id;
                 const paymentSessionId = data.payment_session_id;
 
-                // Step B: Launch Cashfree Modal over the screen
+                // Step B: Launch Cashfree Modal
                 cashfree.checkout({
                     paymentSessionId: paymentSessionId,
                     redirectTarget: "_modal" 
@@ -507,6 +507,7 @@
                 payBtn.innerHTML = originalBtnHtml;
                 updatePayButton();
             }
+        });
         });
 
         // Helper function to update Google Sheets in the background silently
