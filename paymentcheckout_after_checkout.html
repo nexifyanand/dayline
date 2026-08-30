@@ -466,7 +466,7 @@
                 const createUrl = new URL(APP_SCRIPT_URL);
                 createUrl.searchParams.append("api_key", "NEXIFY_SECRET_KEY_987654");
                 createUrl.searchParams.append("action", "create_order");
-                createUrl.searchParams.append("planAmount", finalPriceToPay.toString());
+               createUrl.searchParams.append("planAmount", basePrice.toString());
                 createUrl.searchParams.append("userId", sessionUser); 
                 createUrl.searchParams.append("appName", "Dayline");
                 if (activeCoupon) {
