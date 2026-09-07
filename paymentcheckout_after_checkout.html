@@ -92,7 +92,6 @@
         .promo-box button:hover { background: #e0d7f5; }
         .promo-box button:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        /* Mimics Android banner_coupon_success */
         .banner-coupon-success { display: none; background: var(--success-light); color: #065f46; border: 1px solid #34d399; border-radius: 8px; padding: 12px; margin-bottom: 20px; font-size: 13px; align-items: center; justify-content: space-between; }
         .banner-coupon-success i { color: var(--success); font-size: 16px; margin-right: 6px; }
 
@@ -288,148 +287,263 @@
         </div>
     </div>
 
-    <!-- Script Logic -->
-  <!-- Script Logic -->
-  // ==========================================
-    // ACTION: FINALIZE PAYMENT (Background Callback)
-    // ==========================================
-    else if (action === "finalize_payment") {
-      const targetOrderId = requestData.orderId;
-      const daylineCode = requestData.code; // Passed from your client-side JS
+    <!-- CLIENT-SIDE SCRIPT LOGIC ONLY -->
+    <script>
+        // Use "sandbox" if testing with sandbox keys, "production" when live
+        const cashfree = Cashfree({ mode: "sandbox" }); 
+        
+        // REPLACE THIS WITH YOUR LATEST DEPLOYED APPS SCRIPT URL
+        const APP_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwZ4WhzyOqa8BBxGUOmmyOejC6I-aYBuWLRNj1bO61r0TE70nq50jBSXYdUXfsNCcsH/exec";
 
-      if (!targetOrderId) return sendResponse(false, "Missing Order ID", 0, 0);
+        // 1. Grab token from URL
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get('token');
+        let sessionUser = "User"; 
 
-      // --- 1. SECURE CASHFREE VERIFICATION ---
-      // DO NOT trust the frontend. Ask Cashfree directly if the payment was successful.
-      let actualPaymentStatus = "PENDING";
-      try {
-        const cashfreeCheckUrl = `https://sandbox.cashfree.com/pg/orders/${targetOrderId}`;
-        const cfResponse = UrlFetchApp.fetch(cashfreeCheckUrl, {
-          "method": "get",
-          "headers": {
-            "accept": "application/json",
-            "x-client-id": CASHFREE_APP_ID,
-            "x-client-secret": CASHFREE_SECRET_KEY,
-            "x-api-version": "2023-08-01"
-          },
-          "muteHttpExceptions": true
+        if (!token) {
+            window.location.href = '/premium';
+        }
+
+        // 2. VERIFY TOKEN ON PAGE LOAD
+        async function verifySession() {
+            try {
+                const response = await fetch('/api/initiate-upgrade', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: token })
+                });
+
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || "Invalid session.");
+
+                sessionUser = data.accountName || "User"; 
+
+                document.getElementById('displayCode').textContent = token;
+                document.getElementById('displayUser').textContent = sessionUser;
+                document.getElementById('displayPlan').textContent = data.currentPlan || "Free";
+
+                // Remove loading screen and reveal main UI
+                document.getElementById('securityLoader').style.display = 'none';
+                document.getElementById('mainAppUI').style.display = 'block';
+
+            } catch (error) {
+                alert("This session is invalid, expired, or has already been used.");
+                window.location.href = '/premium';
+            }
+        }
+        
+        verifySession();
+
+        // 3. UI Interaction Elements
+        const planCards = document.querySelectorAll('.plan-card');
+        const summaryPlanName = document.getElementById('summaryPlanName');
+        const summarySubtotal = document.getElementById('summarySubtotal');
+        const summaryDiscount = document.getElementById('summaryDiscount');
+        const summaryTotal = document.getElementById('summaryTotal');
+        const discountRow = document.getElementById('discountRow');
+        const bannerSuccess = document.getElementById('bannerSuccess');
+        const promoContainer = document.getElementById('promoContainer');
+        const couponInput = document.getElementById('couponCode');
+        const payBtn = document.getElementById('payBtn');
+        const btnPayText = document.getElementById('btnPayText');
+        const termsCheck = document.getElementById('termsCheck');
+
+        let basePrice = 0;
+        let finalPriceToPay = 0;
+        let activeCoupon = null;
+
+        function selectPlan(card) {
+            planCards.forEach(c => c.classList.remove('active'));
+            card.classList.add('active');
+
+            const planName = card.querySelector('.plan-name').textContent;
+            basePrice = parseInt(card.getAttribute('data-price'));
+            finalPriceToPay = basePrice;
+
+            summaryPlanName.textContent = planName;
+            summarySubtotal.textContent = `₹${basePrice}`;
+            
+            clearPromo();
+            updatePayButton();
+        }
+
+        function clearPromo() {
+            activeCoupon = null;
+            couponInput.value = "";
+            discountRow.style.display = "none";
+            bannerSuccess.style.display = "none";
+            promoContainer.style.display = "flex";
+            finalPriceToPay = basePrice;
+            summaryTotal.textContent = `₹${finalPriceToPay}`;
+            btnPayText.textContent = `Continue to Payment`;
+        }
+
+        function updatePayButton() {
+            if (basePrice === 0 || !termsCheck.checked) {
+                payBtn.disabled = true;
+                btnPayText.textContent = 'Continue to Payment';
+            } else {
+                payBtn.disabled = false;
+                btnPayText.textContent = `Pay ₹${finalPriceToPay} Securely`;
+            }
+        }
+
+        planCards.forEach(card => card.addEventListener('click', () => selectPlan(card)));
+        termsCheck.addEventListener('change', updatePayButton);
+
+        // 4. PROMO CODE VERIFICATION (Hits Apps Script)
+        document.getElementById('applyPromoBtn').addEventListener('click', async () => {
+            const codeInput = couponInput.value.trim();
+            const btn = document.getElementById('applyPromoBtn');
+            
+            if (!codeInput) {
+                alert("Please enter a coupon code");
+                return;
+            }
+            if (basePrice === 0) {
+                alert("Please select a paid plan first.");
+                return;
+            }
+
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+            btn.disabled = true;
+
+            try {
+                const url = new URL(APP_SCRIPT_URL);
+                url.searchParams.append("api_key", "NEXIFY_SECRET_KEY_987654");
+                url.searchParams.append("action", "verify");
+                url.searchParams.append("couponCode", codeInput);
+                url.searchParams.append("appName", "Dayline");
+                url.searchParams.append("userId", sessionUser);
+                url.searchParams.append("planAmount", basePrice.toString());
+
+                const response = await fetch(url);
+                const res = await response.json();
+
+                if (res.status === "success" && res.discountAmount !== undefined) {
+                    const discountAmount = parseInt(res.discountAmount);
+                    finalPriceToPay = parseInt(res.finalPrice);
+                    const originalPrice = parseInt(res.originalPrice);
+
+                    promoContainer.style.display = "none"; 
+                    bannerSuccess.style.display = "flex";  
+                    
+                    document.getElementById('tvSavedAmount').textContent = `You saved ₹${discountAmount}`;
+                    document.getElementById('promoMessageText').textContent = res.message || "Coupon applied successfully!";
+                    
+                    discountRow.style.display = "flex";
+                    summarySubtotal.textContent = `₹${originalPrice}`;
+                    summaryDiscount.textContent = `- ₹${discountAmount}`;
+                    summaryTotal.textContent = `₹${finalPriceToPay}`;
+                    
+                    activeCoupon = codeInput;
+                    updatePayButton();
+                } else {
+                    alert(res.message || "Invalid coupon code.");
+                }
+            } catch (error) {
+                alert("Failed to verify coupon. Please check your network.");
+            } finally {
+                btn.textContent = 'Apply';
+                btn.disabled = false;
+            }
         });
 
-        const cfData = JSON.parse(cfResponse.getContentText());
-        if (cfData.order_status === "PAID") {
-            actualPaymentStatus = "SUCCESS";
-        } else if (cfData.order_status === "ACTIVE") {
-            actualPaymentStatus = "PENDING";
-        } else {
-            actualPaymentStatus = "FAILED";
+        // 5. SECURE CASHFREE PAYMENT & GOOGLE SHEETS SYNC
+        payBtn.addEventListener('click', async () => {
+            if (finalPriceToPay === 0 || !termsCheck.checked) return;
+
+            const originalBtnHtml = payBtn.innerHTML;
+            payBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Connecting securely...';
+            payBtn.disabled = true;
+
+            try {
+                console.log("1. Starting payment process...");
+
+                // Step A: Create Cashfree Order via Google Apps Script
+                const createUrl = new URL(APP_SCRIPT_URL);
+                createUrl.searchParams.append("api_key", "NEXIFY_SECRET_KEY_987654");
+                createUrl.searchParams.append("action", "create_order");
+                createUrl.searchParams.append("planAmount", basePrice.toString());
+                createUrl.searchParams.append("userId", sessionUser); 
+                createUrl.searchParams.append("appName", "Dayline");
+                if (activeCoupon) {
+                    createUrl.searchParams.append("couponCode", activeCoupon);
+                }
+
+                const response = await fetch(createUrl);
+                
+                // Diagnostic check for HTML error crash
+                const rawText = await response.text();
+                let data;
+                try {
+                    data = JSON.parse(rawText);
+                } catch (jsonError) {
+                    throw new Error("Google Apps Script returned an HTML error page. Re-deploy your script as 'Execute as: Me' and 'Access: Anyone'.");
+                }
+
+                if (data.status !== "success") {
+                    throw new Error(data.message || "Payment failed to initialize.");
+                }
+
+                console.log("2. Launching Cashfree Modal...");
+
+                // Step B: Launch Cashfree Modal
+                cashfree.checkout({
+                    paymentSessionId: data.payment_session_id,
+                    redirectTarget: "_modal" 
+                }).then(async (result) => {
+                    
+                    if (result.error) {
+                        await finalizeSheetUpdate(data.order_id, "FAILED", activeCoupon);
+                        alert(result.error.message || "Payment cancelled.");
+                        payBtn.innerHTML = originalBtnHtml;
+                        updatePayButton();
+                    }
+                    
+                    if (result.paymentDetails) {
+                        payBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Finalizing...';
+                        
+                        // Pass token to backend to deactivate
+                        await finalizeSheetUpdate(data.order_id, "SUCCESS", activeCoupon);
+                        
+                        sessionStorage.setItem('dayline_payment_success_auth', 'VERIFIED_PAID');
+                        sessionStorage.setItem('dayline_completed_code', token);
+                        sessionStorage.setItem('dayline_completed_user', sessionUser);
+                        window.location.href = "/success"; 
+                    }
+                });
+
+            } catch (error) {
+                console.error("🚨 PAYMENT CRASH:", error);
+                alert("Error: " + error.message);
+                payBtn.innerHTML = originalBtnHtml;
+                updatePayButton();
+            }
+        });
+
+        // Background Helper to sync state to Google Sheets
+        async function finalizeSheetUpdate(orderId, status, coupon) {
+            try {
+                const finalizeUrl = new URL(APP_SCRIPT_URL);
+                finalizeUrl.searchParams.append("api_key", "NEXIFY_SECRET_KEY_987654");
+                finalizeUrl.searchParams.append("action", "finalize_payment");
+                finalizeUrl.searchParams.append("orderId", orderId);
+                finalizeUrl.searchParams.append("paymentStatus", status);
+                finalizeUrl.searchParams.append("userId", sessionUser); 
+                
+                // 🚨 CRITICAL FIX: Pass the Dayline code so backend can disable it
+                finalizeUrl.searchParams.append("code", token); 
+
+                if (coupon) {
+                    finalizeUrl.searchParams.append("couponCode", coupon);
+                }
+                
+                await fetch(finalizeUrl);
+            } catch (e) {
+                console.error("Failed to update Sheets:", e);
+            }
         }
-      } catch (e) {
-        return sendResponse(false, "Cashfree Verification Failed: " + e.toString(), 0, 0);
-      }
-
-      // --- 2. EXTRACT FINAL PRICE FROM SHEETS ---
-      const tData = transactionSheet.getDataRange().getValues();
-      const tRowIndex = tData.findIndex(r => String(r[0]) === String(targetOrderId));
-      
-      let sheetFinalPrice = 0;
-      if (tRowIndex !== -1) {
-        transactionSheet.getRange(tRowIndex + 1, 5).setValue(actualPaymentStatus); // Use SECURE status
-        sheetFinalPrice = parseFloat(tData[tRowIndex][2]) || 0;
-      }
-
-      // --- 3. FIREBASE CONFIG ---
-      const firebaseUrlBase = "https://dayline-nexify-default-rtdb.firebaseio.com/";
-      
-      // 🚨 CRITICAL: Paste your Database Secret here from Firebase Project Settings!
-      // Without this, emails will NOT send and users will NOT be upgraded!
-      const dbSecret = "YOUR_FIREBASE_SECRET_HERE"; 
-
-      try {
-          // --- 4. FETCH UID FROM 'generated_codes' NODE ---
-          let actualUid = requestData.userId || "UNKNOWN";
-          if (daylineCode) {
-            const codeRes = UrlFetchApp.fetch(`${firebaseUrlBase}generated_codes/${daylineCode}.json?auth=${dbSecret}`);
-            const codeData = JSON.parse(codeRes.getContentText());
-            if (codeData && codeData.uid) actualUid = codeData.uid;
-          }
-
-          // --- 5. FETCH EMAIL & FCM TOKEN FROM 'users' NODE ---
-          let userEmail = "";
-          let fcmToken = "";
-          let userName = "Dayline User";
-
-          if (actualUid !== "UNKNOWN") {
-            const userRes = UrlFetchApp.fetch(`${firebaseUrlBase}users/${actualUid}.json?auth=${dbSecret}`);
-            const userData = JSON.parse(userRes.getContentText());
-            if (userData) {
-              userEmail = userData.email || "";
-              fcmToken = userData.fcmToken || "";
-              userName = userData.name || userData.username || userName;
-            }
-          }
-
-          // Create standard transaction object
-          const txData = {
-            orderId: targetOrderId,
-            userId: actualUid,
-            amount: sheetFinalPrice,
-            status: actualPaymentStatus, // Use the verified Cashfree status
-            daylineCode: daylineCode || "NONE",
-            timestamp: new Date().toISOString()
-          };
-
-          // 6. UPDATE FRDB: mytransactions
-          if (actualUid !== "UNKNOWN") {
-            UrlFetchApp.fetch(`${firebaseUrlBase}mytransactions/${actualUid}/${targetOrderId}.json?auth=${dbSecret}`, {
-              method: "put", contentType: "application/json", payload: JSON.stringify(txData)
-            });
-          }
-
-          // ==========================================
-          // EXECUTE SUCCESS PROTOCOLS
-          // ==========================================
-          if (actualPaymentStatus === "SUCCESS") {
-
-            // A. UPDATE PREMIUM STATUS
-            if (actualUid !== "UNKNOWN") {
-              UrlFetchApp.fetch(`${firebaseUrlBase}users/${actualUid}.json?auth=${dbSecret}`, {
-                method: "patch", contentType: "application/json",
-                payload: JSON.stringify({ isPremium: true, premiumActivatedAt: new Date().toISOString() })
-              });
-            }
-
-            // B. UPDATE PREMIUM TRANSACTIONS
-            UrlFetchApp.fetch(`${firebaseUrlBase}premium_transactions/${targetOrderId}.json?auth=${dbSecret}`, {
-              method: "put", contentType: "application/json", payload: JSON.stringify(txData)
-            });
-
-            // C. EXPIRE CODE
-            if (daylineCode) {
-              UrlFetchApp.fetch(`${firebaseUrlBase}dayline_code_transactions/${daylineCode}/${targetOrderId}.json?auth=${dbSecret}`, {
-                method: "put", contentType: "application/json", payload: JSON.stringify(txData)
-              });
-
-              UrlFetchApp.fetch(`${firebaseUrlBase}generated_codes/${daylineCode}.json?auth=${dbSecret}`, {
-                method: "patch", contentType: "application/json",
-                payload: JSON.stringify({ used: true, sessionActive: false, completedAt: new Date().toISOString() })
-              });
-            }
-
-            // D. SEND EMAIL RECEIPT
-            if (userEmail) {
-              sendEmailReceipt(userEmail, targetOrderId, sheetFinalPrice, actualUid);
-            }
-
-            // E. SEND PUSH NOTIFICATION
-            if (fcmToken) {
-              sendFCMNotification(fcmToken, "Premium Activated!", `Thank you, ${userName}! Your payment of ₹${sheetFinalPrice} was successful.`);
-            }
-          }
-
-          return sendResponse(true, "Transaction finalized successfully.", 0, 0, 0);
-
-      } catch (error) {
-          // If Firebase or Email fails, it will return the exact error message!
-          return sendResponse(false, "Firebase/Backend Error: " + error.toString(), 0, 0);
-      }
-    }
+    </script>
+</body>
+</html>
