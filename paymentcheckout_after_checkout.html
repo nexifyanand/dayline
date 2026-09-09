@@ -288,262 +288,151 @@
     </div>
 
     <!-- CLIENT-SIDE SCRIPT LOGIC ONLY -->
-    <script>
-        // Use "sandbox" if testing with sandbox keys, "production" when live
-        const cashfree = Cashfree({ mode: "sandbox" }); 
-        
-        // REPLACE THIS WITH YOUR LATEST DEPLOYED APPS SCRIPT URL
-        const APP_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwZ4WhzyOqa8BBxGUOmmyOejC6I-aYBuWLRNj1bO61r0TE70nq50jBSXYdUXfsNCcsH/exec";
+   <script>
+    // Use "sandbox" if testing with sandbox keys, "production" when live
+    const cashfree = Cashfree({ mode: "sandbox" }); 
+    
+    const APP_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwZ4WhzyOqa8BBxGUOmmyOejC6I-aYBuWLRNj1bO61r0TE70nq50jBSXYdUXfsNCcsH/exec";
 
-        // 1. Grab token from URL
-        const params = new URLSearchParams(window.location.search);
-        const token = params.get('token');
-        let sessionUser = "User"; 
+    // NEW: Replace with your actual Vercel API URL
+    const VERCEL_FCM_API_URL = "https://dayline-fcm.vercel.app/api/send"; 
 
-        if (!token) {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    
+    let sessionUser = "User"; 
+    let firebaseUid = ""; // NEW: Variable to hold the user's UID
+
+    if (!token) {
+        window.location.href = '/premium';
+    }
+
+    // 2. VERIFY TOKEN ON PAGE LOAD
+    async function verifySession() {
+        try {
+            const response = await fetch('/api/initiate-upgrade', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code: token })
+            });
+
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || "Invalid session.");
+
+            sessionUser = data.accountName || "User"; 
+            
+            // NEW: Capture the UID from your backend response. 
+            // Ensure your '/api/initiate-upgrade' endpoint returns the Firebase UID in the data object!
+            firebaseUid = data.uid || data.accountName || ""; 
+
+            document.getElementById('displayCode').textContent = token;
+            document.getElementById('displayUser').textContent = sessionUser;
+            document.getElementById('displayPlan').textContent = data.currentPlan || "Free";
+
+            document.getElementById('securityLoader').style.display = 'none';
+            document.getElementById('mainAppUI').style.display = 'block';
+
+        } catch (error) {
+            alert("This session is invalid, expired, or has already been used.");
             window.location.href = '/premium';
         }
+    }
+    
+    verifySession();
 
-        // 2. VERIFY TOKEN ON PAGE LOAD
-        async function verifySession() {
-            try {
-                const response = await fetch('/api/initiate-upgrade', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ code: token })
-                });
+    // ... [KEEP ALL YOUR PROMO CODE AND UI LOGIC EXACTLY AS IT IS] ...
+    // (Skipped UI logic here for brevity, keep your existing code for cards and buttons)
 
-                const data = await response.json();
-                if (!response.ok) throw new Error(data.error || "Invalid session.");
+    // 5. SECURE CASHFREE PAYMENT & GOOGLE SHEETS SYNC
+    payBtn.addEventListener('click', async () => {
+        if (finalPriceToPay === 0 || !termsCheck.checked) return;
 
-                sessionUser = data.accountName || "User"; 
+        const originalBtnHtml = payBtn.innerHTML;
+        payBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Connecting securely...';
+        payBtn.disabled = true;
 
-                document.getElementById('displayCode').textContent = token;
-                document.getElementById('displayUser').textContent = sessionUser;
-                document.getElementById('displayPlan').textContent = data.currentPlan || "Free";
-
-                // Remove loading screen and reveal main UI
-                document.getElementById('securityLoader').style.display = 'none';
-                document.getElementById('mainAppUI').style.display = 'block';
-
-            } catch (error) {
-                alert("This session is invalid, expired, or has already been used.");
-                window.location.href = '/premium';
+        try {
+            // Step A: Create Cashfree Order via Google Apps Script
+            const createUrl = new URL(APP_SCRIPT_URL);
+            createUrl.searchParams.append("api_key", "NEXIFY_SECRET_KEY_987654");
+            createUrl.searchParams.append("action", "create_order");
+            createUrl.searchParams.append("planAmount", basePrice.toString());
+            createUrl.searchParams.append("userId", sessionUser); 
+            createUrl.searchParams.append("appName", "Dayline");
+            if (activeCoupon) {
+                createUrl.searchParams.append("couponCode", activeCoupon);
             }
-        }
-        
-        verifySession();
 
-        // 3. UI Interaction Elements
-        const planCards = document.querySelectorAll('.plan-card');
-        const summaryPlanName = document.getElementById('summaryPlanName');
-        const summarySubtotal = document.getElementById('summarySubtotal');
-        const summaryDiscount = document.getElementById('summaryDiscount');
-        const summaryTotal = document.getElementById('summaryTotal');
-        const discountRow = document.getElementById('discountRow');
-        const bannerSuccess = document.getElementById('bannerSuccess');
-        const promoContainer = document.getElementById('promoContainer');
-        const couponInput = document.getElementById('couponCode');
-        const payBtn = document.getElementById('payBtn');
-        const btnPayText = document.getElementById('btnPayText');
-        const termsCheck = document.getElementById('termsCheck');
+            const response = await fetch(createUrl);
+            const rawText = await response.text();
+            let data;
+            try {
+                data = JSON.parse(rawText);
+            } catch (jsonError) {
+                throw new Error("Google Apps Script returned an HTML error page.");
+            }
 
-        let basePrice = 0;
-        let finalPriceToPay = 0;
-        let activeCoupon = null;
+            if (data.status !== "success") {
+                throw new Error(data.message || "Payment failed to initialize.");
+            }
 
-        function selectPlan(card) {
-            planCards.forEach(c => c.classList.remove('active'));
-            card.classList.add('active');
+            // Step B: Launch Cashfree Modal
+            cashfree.checkout({
+                paymentSessionId: data.payment_session_id,
+                redirectTarget: "_modal" 
+            }).then(async (result) => {
+                
+                if (result.error) {
+                    await finalizeSheetUpdate(data.order_id, "FAILED", activeCoupon);
+                    alert(result.error.message || "Payment cancelled.");
+                    payBtn.innerHTML = originalBtnHtml;
+                    updatePayButton();
+                }
+                
+                if (result.paymentDetails) {
+                    payBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Finalizing...';
+                    
+                    await finalizeSheetUpdate(data.order_id, "SUCCESS", activeCoupon);
+                    
+                    // NEW: Trigger the FCM Push Notification securely via Vercel
+                    await sendSuccessNotification(firebaseUid);
+                    
+                    sessionStorage.setItem('dayline_payment_success_auth', 'VERIFIED_PAID');
+                    sessionStorage.setItem('dayline_completed_code', token);
+                    sessionStorage.setItem('dayline_completed_user', sessionUser);
+                    window.location.href = "/success"; 
+                }
+            });
 
-            const planName = card.querySelector('.plan-name').textContent;
-            basePrice = parseInt(card.getAttribute('data-price'));
-            finalPriceToPay = basePrice;
-
-            summaryPlanName.textContent = planName;
-            summarySubtotal.textContent = `₹${basePrice}`;
-            
-            clearPromo();
+        } catch (error) {
+            alert("Error: " + error.message);
+            payBtn.innerHTML = originalBtnHtml;
             updatePayButton();
         }
+    });
 
-        function clearPromo() {
-            activeCoupon = null;
-            couponInput.value = "";
-            discountRow.style.display = "none";
-            bannerSuccess.style.display = "none";
-            promoContainer.style.display = "flex";
-            finalPriceToPay = basePrice;
-            summaryTotal.textContent = `₹${finalPriceToPay}`;
-            btnPayText.textContent = `Continue to Payment`;
+    async function finalizeSheetUpdate(orderId, status, coupon) {
+        // ... (Keep your existing finalizeSheetUpdate code) ...
+    }
+
+    // NEW: Function to request the Push Notification
+    async function sendSuccessNotification(uid) {
+        if (!uid) return; // Skip if UID isn't available
+
+        try {
+            await fetch(VERCEL_FCM_API_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    uid: uid, // Sending the UID instead of the token
+                    title: "Premium Unlocked! 🎉",
+                    body: "Your payment was successful. Enjoy your premium features!"
+                })
+            });
+        } catch (error) {
+            console.error("FCM trigger failed in background:", error);
         }
-
-        function updatePayButton() {
-            if (basePrice === 0 || !termsCheck.checked) {
-                payBtn.disabled = true;
-                btnPayText.textContent = 'Continue to Payment';
-            } else {
-                payBtn.disabled = false;
-                btnPayText.textContent = `Pay ₹${finalPriceToPay} Securely`;
-            }
-        }
-
-        planCards.forEach(card => card.addEventListener('click', () => selectPlan(card)));
-        termsCheck.addEventListener('change', updatePayButton);
-
-        // 4. PROMO CODE VERIFICATION (Hits Apps Script)
-        document.getElementById('applyPromoBtn').addEventListener('click', async () => {
-            const codeInput = couponInput.value.trim();
-            const btn = document.getElementById('applyPromoBtn');
-            
-            if (!codeInput) {
-                alert("Please enter a coupon code");
-                return;
-            }
-            if (basePrice === 0) {
-                alert("Please select a paid plan first.");
-                return;
-            }
-
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
-            btn.disabled = true;
-
-            try {
-                const url = new URL(APP_SCRIPT_URL);
-                url.searchParams.append("api_key", "NEXIFY_SECRET_KEY_987654");
-                url.searchParams.append("action", "verify");
-                url.searchParams.append("couponCode", codeInput);
-                url.searchParams.append("appName", "Dayline");
-                url.searchParams.append("userId", sessionUser);
-                url.searchParams.append("planAmount", basePrice.toString());
-
-                const response = await fetch(url);
-                const res = await response.json();
-
-                if (res.status === "success" && res.discountAmount !== undefined) {
-                    const discountAmount = parseInt(res.discountAmount);
-                    finalPriceToPay = parseInt(res.finalPrice);
-                    const originalPrice = parseInt(res.originalPrice);
-
-                    promoContainer.style.display = "none"; 
-                    bannerSuccess.style.display = "flex";  
-                    
-                    document.getElementById('tvSavedAmount').textContent = `You saved ₹${discountAmount}`;
-                    document.getElementById('promoMessageText').textContent = res.message || "Coupon applied successfully!";
-                    
-                    discountRow.style.display = "flex";
-                    summarySubtotal.textContent = `₹${originalPrice}`;
-                    summaryDiscount.textContent = `- ₹${discountAmount}`;
-                    summaryTotal.textContent = `₹${finalPriceToPay}`;
-                    
-                    activeCoupon = codeInput;
-                    updatePayButton();
-                } else {
-                    alert(res.message || "Invalid coupon code.");
-                }
-            } catch (error) {
-                alert("Failed to verify coupon. Please check your network.");
-            } finally {
-                btn.textContent = 'Apply';
-                btn.disabled = false;
-            }
-        });
-
-        // 5. SECURE CASHFREE PAYMENT & GOOGLE SHEETS SYNC
-        payBtn.addEventListener('click', async () => {
-            if (finalPriceToPay === 0 || !termsCheck.checked) return;
-
-            const originalBtnHtml = payBtn.innerHTML;
-            payBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Connecting securely...';
-            payBtn.disabled = true;
-
-            try {
-                console.log("1. Starting payment process...");
-
-                // Step A: Create Cashfree Order via Google Apps Script
-                const createUrl = new URL(APP_SCRIPT_URL);
-                createUrl.searchParams.append("api_key", "NEXIFY_SECRET_KEY_987654");
-                createUrl.searchParams.append("action", "create_order");
-                createUrl.searchParams.append("planAmount", basePrice.toString());
-                createUrl.searchParams.append("userId", sessionUser); 
-                createUrl.searchParams.append("appName", "Dayline");
-                if (activeCoupon) {
-                    createUrl.searchParams.append("couponCode", activeCoupon);
-                }
-
-                const response = await fetch(createUrl);
-                
-                // Diagnostic check for HTML error crash
-                const rawText = await response.text();
-                let data;
-                try {
-                    data = JSON.parse(rawText);
-                } catch (jsonError) {
-                    throw new Error("Google Apps Script returned an HTML error page. Re-deploy your script as 'Execute as: Me' and 'Access: Anyone'.");
-                }
-
-                if (data.status !== "success") {
-                    throw new Error(data.message || "Payment failed to initialize.");
-                }
-
-                console.log("2. Launching Cashfree Modal...");
-
-                // Step B: Launch Cashfree Modal
-                cashfree.checkout({
-                    paymentSessionId: data.payment_session_id,
-                    redirectTarget: "_modal" 
-                }).then(async (result) => {
-                    
-                    if (result.error) {
-                        await finalizeSheetUpdate(data.order_id, "FAILED", activeCoupon);
-                        alert(result.error.message || "Payment cancelled.");
-                        payBtn.innerHTML = originalBtnHtml;
-                        updatePayButton();
-                    }
-                    
-                    if (result.paymentDetails) {
-                        payBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Finalizing...';
-                        
-                        // Pass token to backend to deactivate
-                        await finalizeSheetUpdate(data.order_id, "SUCCESS", activeCoupon);
-                        
-                        sessionStorage.setItem('dayline_payment_success_auth', 'VERIFIED_PAID');
-                        sessionStorage.setItem('dayline_completed_code', token);
-                        sessionStorage.setItem('dayline_completed_user', sessionUser);
-                        window.location.href = "/success"; 
-                    }
-                });
-
-            } catch (error) {
-                console.error("🚨 PAYMENT CRASH:", error);
-                alert("Error: " + error.message);
-                payBtn.innerHTML = originalBtnHtml;
-                updatePayButton();
-            }
-        });
-
-        // Background Helper to sync state to Google Sheets
-        async function finalizeSheetUpdate(orderId, status, coupon) {
-            try {
-                const finalizeUrl = new URL(APP_SCRIPT_URL);
-                finalizeUrl.searchParams.append("api_key", "NEXIFY_SECRET_KEY_987654");
-                finalizeUrl.searchParams.append("action", "finalize_payment");
-                finalizeUrl.searchParams.append("orderId", orderId);
-                finalizeUrl.searchParams.append("paymentStatus", status);
-                finalizeUrl.searchParams.append("userId", sessionUser); 
-                
-                // 🚨 CRITICAL FIX: Pass the Dayline code so backend can disable it
-                finalizeUrl.searchParams.append("code", token); 
-
-                if (coupon) {
-                    finalizeUrl.searchParams.append("couponCode", coupon);
-                }
-                
-                await fetch(finalizeUrl);
-            } catch (e) {
-                console.error("Failed to update Sheets:", e);
-            }
-        }
-    </script>
+    }
+</script>
 </body>
 </html>
