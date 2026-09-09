@@ -48,11 +48,47 @@
         .logo i { color: var(--primary); }
 
         /* User Info Bar */
-        .user-info-bar { background: white; border: 1px solid var(--border-color); border-radius: 12px; padding: 20px 30px; display: flex; justify-content: space-between; margin-bottom: 40px; box-shadow: var(--card-shadow); }
+        .user-info-bar { background: white; border: 1px solid var(--border-color); border-radius: 12px; padding: 20px 30px; display: flex; justify-content: space-between; margin-bottom: 20px; box-shadow: var(--card-shadow); }
         .info-group { display: flex; flex-direction: column; gap: 4px; }
         .info-label { font-size: 12px; color: var(--text-muted); }
         .info-value { font-size: 14px; font-weight: 600; color: var(--text-dark); }
         .badge-plan { background: var(--primary-light); color: var(--primary); padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; border: 1px solid #dcd3ef; text-transform: capitalize; display: inline-block; }
+
+        /* --- NEW DYNAMIC UI STYLES --- */
+        .expiry-banner {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #166534;
+            padding: 12px 20px;
+            border-radius: 12px;
+            margin-bottom: 35px;
+            display: none; /* Hidden by default */
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .expiry-banner i { color: #22c55e; font-size: 18px; }
+
+        .plan-card.disabled {
+            opacity: 0.5;
+            pointer-events: none;
+            background: #f8f9fa;
+            border-color: var(--border-color);
+        }
+        .plan-card.disabled .btn-select {
+            background: #e2e8f0;
+            color: #64748b;
+            border: none;
+        }
+        
+        .original-price {
+            text-decoration: line-through;
+            color: var(--text-muted);
+            font-size: 16px;
+            margin-right: 8px;
+        }
+        /* ----------------------------- */
 
         .pricing-header { text-align: center; margin-bottom: 40px; }
         .pricing-header h1 { font-size: 32px; margin: 0 0 10px 0; }
@@ -62,7 +98,7 @@
         /* Pricing Cards */
         .pricing-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 25px; }
         .plan-card { background: white; border: 1px solid var(--border-color); border-radius: 16px; padding: 25px 20px; position: relative; display: flex; flex-direction: column; cursor: pointer; transition: all 0.2s ease; }
-        .plan-card:hover { border-color: var(--primary); box-shadow: var(--card-shadow); }
+        .plan-card:hover:not(.disabled) { border-color: var(--primary); box-shadow: var(--card-shadow); }
         .plan-card.active { border: 2px solid var(--primary); background: #faf8ff; }
         .radio-btn { width: 18px; height: 18px; border: 2px solid #ccc; border-radius: 50%; position: absolute; top: 20px; left: 20px; }
         .plan-card.active .radio-btn { border-color: var(--primary); border-width: 5px; }
@@ -100,7 +136,7 @@
         .terms-check a { color: var(--primary); text-decoration: none; }
 
         .btn-pay { width: 100%; padding: 16px; background: var(--primary); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: background 0.2s; }
-        .btn-pay:hover { background: var(--primary-hover); }
+        .btn-pay:hover:not(:disabled) { background: var(--primary-hover); }
         .btn-pay:disabled { opacity: 0.7; cursor: not-allowed; }
         .secure-footer { text-align: center; font-size: 12px; color: var(--text-muted); margin-top: 15px; }
 
@@ -153,6 +189,12 @@
                 </div>
             </div>
 
+            <!-- NEW EXPIRY BANNER -->
+            <div class="expiry-banner" id="expiryBanner">
+                <i class="fa-solid fa-clock-rotate-left"></i>
+                <span id="expiryText">Your current premium plan is active.</span>
+            </div>
+
             <div class="pricing-header">
                 <h1>Choose your premium plan</h1>
                 <p>Unlock unlimited access to all premium features.</p>
@@ -161,7 +203,7 @@
 
             <div class="pricing-grid">
                 <!-- Free Plan -->
-                <div class="plan-card active" data-plan="free" data-price="0">
+                <div class="plan-card" data-plan="free" data-price="0">
                     <div class="radio-btn"></div>
                     <div class="plan-icon"><i class="fa-solid fa-gift"></i></div>
                     <div class="plan-name">Free</div>
@@ -252,7 +294,7 @@
                 
                 <!-- Discount Row (Hidden initially) -->
                 <div class="summary-row" id="discountRow" style="display: none; color: var(--success);">
-                    <span>Discount</span>
+                    <span id="discountLabelText">Discount</span>
                     <span id="summaryDiscount">- ₹0</span>
                 </div>
 
@@ -287,27 +329,71 @@
         </div>
     </div>
 
-    <!-- CLIENT-SIDE SCRIPT LOGIC ONLY -->
- <script>
-        // Use "sandbox" if testing with sandbox keys, "production" when live
-        const cashfree = Cashfree({ mode: "sandbox" }); 
-        
+    <!-- MODULE SCRIPT FOR FIREBASE v10 -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getDatabase, ref, get, set, child } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+
+        // --- FIREBASE CONFIGURATION ---
+        // REPLACE THESE WITH YOUR ACTUAL FIREBASE PROJECT KEYS
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            databaseURL: "YOUR_DB_URL", // e.g., "https://your-project-id-default-rtdb.firebaseio.com"
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // --- GLOBALS & CONSTANTS ---
+        const cashfree = Cashfree({ mode: "sandbox" }); // Change to "production" when live
         const APP_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwZ4WhzyOqa8BBxGUOmmyOejC6I-aYBuWLRNj1bO61r0TE70nq50jBSXYdUXfsNCcsH/exec";
         const VERCEL_FCM_API_URL = "https://dayline-fcm.vercel.app/api/send"; 
 
-        const params = new URLSearchParams(window.location.search);
-        const token = params.get('token');
-        
+        const PLAN_HIERARCHY = { 'free': 0, 'monthly': 1, 'yearly': 2, 'lifetime': 3 };
+        const PLAN_DURATIONS = { 'monthly': 30, 'yearly': 365, 'lifetime': 36500 }; 
+
         let sessionUser = "User"; 
         let firebaseUid = ""; 
+        let currentUserData = { isPremium: false, current_plan: 'free' };
+        let currentActivePlan = null;
+        
+        let remainingValue = 0; 
+        let daysRemaining = 0;
+        let basePrice = 0;
+        let finalPriceToPay = 0;
+        let activeCoupon = null;
+
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get('token');
 
         if (!token) {
             window.location.href = '/premium';
         }
 
-        // 1. VERIFY TOKEN ON PAGE LOAD
+        // --- DOM ELEMENTS ---
+        const planCards = document.querySelectorAll('.plan-card');
+        const summaryPlanName = document.getElementById('summaryPlanName');
+        const summarySubtotal = document.getElementById('summarySubtotal');
+        const summaryDiscount = document.getElementById('summaryDiscount');
+        const summaryTotal = document.getElementById('summaryTotal');
+        const discountRow = document.getElementById('discountRow');
+        const discountLabelText = document.getElementById('discountLabelText');
+        const bannerSuccess = document.getElementById('bannerSuccess');
+        const promoContainer = document.getElementById('promoContainer');
+        const couponInput = document.getElementById('couponCode');
+        const payBtn = document.getElementById('payBtn');
+        const btnPayText = document.getElementById('btnPayText');
+        const termsCheck = document.getElementById('termsCheck');
+
+        // --- 1. INITIALIZE APP SESSION ---
         async function verifySession() {
             try {
+                // Verify Token through your API first (if applicable)
                 const response = await fetch('/api/initiate-upgrade', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -318,52 +404,152 @@
                 if (!response.ok) throw new Error(data.error || "Invalid session.");
 
                 sessionUser = data.accountName || "User"; 
-                firebaseUid = data.uid || data.accountName || ""; 
-
+                firebaseUid = data.uid || data.accountName; 
+                
                 document.getElementById('displayCode').textContent = token;
                 document.getElementById('displayUser').textContent = sessionUser;
-                document.getElementById('displayPlan').textContent = data.currentPlan || "Free";
+
+                // Fetch real-time data from Firebase
+                await fetchFirebaseDetails(firebaseUid);
 
                 document.getElementById('securityLoader').style.display = 'none';
                 document.getElementById('mainAppUI').style.display = 'block';
 
             } catch (error) {
+                console.error(error);
                 alert("This session is invalid, expired, or has already been used.");
                 window.location.href = '/premium';
             }
         }
         
-        verifySession();
+        // --- 2. FIREBASE & PRORATION LOGIC ---
+        async function fetchFirebaseDetails(uid) {
+            try {
+                const dbRef = ref(db);
+                const [userSnap, activePlanSnap] = await Promise.all([
+                    get(child(dbRef, `users/${uid}`)),
+                    get(child(dbRef, `Active_plan/${uid}`))
+                ]);
 
-        // 2. UI DOM ELEMENTS & VARIABLES
-        const planCards = document.querySelectorAll('.plan-card');
-        const summaryPlanName = document.getElementById('summaryPlanName');
-        const summarySubtotal = document.getElementById('summarySubtotal');
-        const summaryDiscount = document.getElementById('summaryDiscount');
-        const summaryTotal = document.getElementById('summaryTotal');
-        const discountRow = document.getElementById('discountRow');
-        const bannerSuccess = document.getElementById('bannerSuccess');
-        const promoContainer = document.getElementById('promoContainer');
-        const couponInput = document.getElementById('couponCode');
-        const payBtn = document.getElementById('payBtn');
-        const btnPayText = document.getElementById('btnPayText');
-        const termsCheck = document.getElementById('termsCheck');
+                if (userSnap.exists()) {
+                    currentUserData = userSnap.val();
+                }
+                
+                document.getElementById('displayPlan').textContent = currentUserData.current_plan || "Free";
 
-        let basePrice = 0;
-        let finalPriceToPay = 0;
-        let activeCoupon = null;
+                if (activePlanSnap.exists() && currentUserData.isPremium) {
+                    currentActivePlan = activePlanSnap.val();
+                    calculateProration(currentActivePlan);
+                }
 
-        // 3. UI INTERACTION FUNCTIONS
+                renderDynamicPlans();
+            } catch (error) {
+                console.error("Firebase fetch error:", error);
+                // Render defaults if fetch fails
+                renderDynamicPlans();
+            }
+        }
+
+        function calculateProration(planData) {
+            const expiry = new Date(planData.expiry_date);
+            const now = new Date();
+            
+            const diffTime = expiry - now;
+            daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (daysRemaining > 0) {
+                const banner = document.getElementById('expiryBanner');
+                banner.style.display = 'flex';
+                document.getElementById('expiryText').innerHTML = 
+                    `Your <strong>${planData.plan_type}</strong> plan is active. Expires in <strong>${daysRemaining} days</strong>.`;
+
+                const totalPlanDays = PLAN_DURATIONS[planData.plan_type.toLowerCase()] || 30;
+                const dailyRate = planData.amount / totalPlanDays;
+                remainingValue = Math.floor(dailyRate * daysRemaining);
+            } else {
+                daysRemaining = 0;
+                remainingValue = 0;
+                currentUserData.isPremium = false; 
+            }
+        }
+
+        function renderDynamicPlans() {
+            const currentRank = PLAN_HIERARCHY[currentUserData.current_plan.toLowerCase()] || 0;
+            let defaultSelected = false;
+
+            planCards.forEach(card => {
+                const cardPlan = card.getAttribute('data-plan');
+                const cardRank = PLAN_HIERARCHY[cardPlan];
+                const baseCardPrice = parseInt(card.getAttribute('data-price'));
+                const btn = card.querySelector('.btn-select');
+                const priceElement = card.querySelector('.plan-price');
+
+                card.classList.remove('active', 'disabled'); // Reset
+
+                // 1. Disable Lower Plans
+                if (cardRank < currentRank) {
+                    card.classList.add('disabled');
+                    btn.textContent = 'Unavailable';
+                } 
+                // 2. Format Current Plan (Top-up)
+                else if (cardRank === currentRank && currentRank > 0) {
+                    card.classList.add('active'); 
+                    btn.textContent = 'Top-up (+ ' + PLAN_DURATIONS[cardPlan] + ' days)';
+                    selectPlan(card);
+                    defaultSelected = true;
+                } 
+                // 3. Format Upgrade Plans (Apply Proration)
+                else if (cardRank > currentRank && currentUserData.isPremium && remainingValue > 0) {
+                    btn.textContent = 'Upgrade Plan';
+                    const proratedPrice = Math.max(0, baseCardPrice - remainingValue);
+                    
+                    priceElement.innerHTML = `<span class="original-price">₹${baseCardPrice}</span>₹${proratedPrice}`;
+                    card.setAttribute('data-prorated-price', proratedPrice);
+                }
+
+                // If user is free, ensure Free is selected by default
+                if (currentRank === 0 && cardPlan === 'free') {
+                    card.classList.add('active');
+                    selectPlan(card);
+                    defaultSelected = true;
+                }
+            });
+
+            // Fallback selection if nothing got selected
+            if (!defaultSelected) {
+                const availableCard = document.querySelector('.plan-card:not(.disabled)');
+                if (availableCard) {
+                    availableCard.classList.add('active');
+                    selectPlan(availableCard);
+                }
+            }
+        }
+
+        // --- 3. UI INTERACTIONS ---
         function selectPlan(card) {
+            if (card.classList.contains('disabled')) return;
+            
             planCards.forEach(c => c.classList.remove('active'));
             card.classList.add('active');
 
             const planName = card.querySelector('.plan-name').textContent;
-            basePrice = parseInt(card.getAttribute('data-price'));
+            
+            // Check if prorated price exists, otherwise use base price
+            basePrice = parseInt(card.getAttribute('data-prorated-price') || card.getAttribute('data-price'));
             finalPriceToPay = basePrice;
 
             summaryPlanName.textContent = planName;
             summarySubtotal.textContent = `₹${basePrice}`;
+            
+            // If it's an upgrade, visually explain the discount
+            if (card.getAttribute('data-prorated-price')) {
+                discountRow.style.display = 'flex';
+                discountRow.style.color = 'var(--text-muted)';
+                discountLabelText.textContent = "Upgrade Credit";
+                summaryDiscount.textContent = `(Includes ₹${remainingValue} adjustment)`;
+            } else {
+                discountRow.style.display = 'none';
+            }
             
             clearPromo();
             updatePayButton();
@@ -372,10 +558,21 @@
         function clearPromo() {
             activeCoupon = null;
             couponInput.value = "";
-            discountRow.style.display = "none";
             bannerSuccess.style.display = "none";
             promoContainer.style.display = "flex";
             finalPriceToPay = basePrice;
+            
+            // Restore upgrade credit visual if applicable, otherwise hide discount row entirely
+            const activeCard = document.querySelector('.plan-card.active');
+            if (activeCard && activeCard.getAttribute('data-prorated-price')) {
+                discountRow.style.display = 'flex';
+                discountRow.style.color = 'var(--text-muted)';
+                discountLabelText.textContent = "Upgrade Credit";
+                summaryDiscount.textContent = `(Includes ₹${remainingValue} adjustment)`;
+            } else {
+                discountRow.style.display = "none";
+            }
+
             summaryTotal.textContent = `₹${finalPriceToPay}`;
             btnPayText.textContent = `Continue to Payment`;
         }
@@ -393,19 +590,13 @@
         planCards.forEach(card => card.addEventListener('click', () => selectPlan(card)));
         termsCheck.addEventListener('change', updatePayButton);
 
-        // 4. PROMO CODE VERIFICATION
+        // --- 4. PROMO CODE VERIFICATION ---
         document.getElementById('applyPromoBtn').addEventListener('click', async () => {
             const codeInput = couponInput.value.trim();
             const btn = document.getElementById('applyPromoBtn');
             
-            if (!codeInput) {
-                alert("Please enter a coupon code");
-                return;
-            }
-            if (basePrice === 0) {
-                alert("Please select a paid plan first.");
-                return;
-            }
+            if (!codeInput) return alert("Please enter a coupon code");
+            if (basePrice === 0) return alert("Please select a paid plan first.");
 
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
             btn.disabled = true;
@@ -417,7 +608,7 @@
                 url.searchParams.append("couponCode", codeInput);
                 url.searchParams.append("appName", "Dayline");
                 url.searchParams.append("userId", sessionUser);
-                url.searchParams.append("planAmount", basePrice.toString());
+                url.searchParams.append("planAmount", basePrice.toString()); // Apply on prorated/base price
 
                 const response = await fetch(url);
                 const res = await response.json();
@@ -434,6 +625,9 @@
                     document.getElementById('promoMessageText').textContent = res.message || "Coupon applied successfully!";
                     
                     discountRow.style.display = "flex";
+                    discountRow.style.color = 'var(--success)';
+                    discountLabelText.textContent = "Coupon Discount";
+                    
                     summarySubtotal.textContent = `₹${originalPrice}`;
                     summaryDiscount.textContent = `- ₹${discountAmount}`;
                     summaryTotal.textContent = `₹${finalPriceToPay}`;
@@ -451,7 +645,7 @@
             }
         });
 
-        // 5. SECURE CASHFREE PAYMENT & GOOGLE SHEETS SYNC
+        // --- 5. CASHFREE & FIREBASE POST-PAYMENT LOGIC ---
         payBtn.addEventListener('click', async () => {
             if (finalPriceToPay === 0 || !termsCheck.checked) return;
 
@@ -471,17 +665,9 @@
                 }
 
                 const response = await fetch(createUrl);
-                const rawText = await response.text();
-                let data;
-                try {
-                    data = JSON.parse(rawText);
-                } catch (jsonError) {
-                    throw new Error("Google Apps Script returned an HTML error page.");
-                }
+                const data = await response.json();
 
-                if (data.status !== "success") {
-                    throw new Error(data.message || "Payment failed to initialize.");
-                }
+                if (data.status !== "success") throw new Error(data.message || "Payment failed to initialize.");
 
                 cashfree.checkout({
                     paymentSessionId: data.payment_session_id,
@@ -489,7 +675,7 @@
                 }).then(async (result) => {
                     
                     if (result.error) {
-                        await finalizeSheetUpdate(data.order_id, "FAILED", activeCoupon);
+                        await finalizeUpdates(data.order_id, "FAILED", activeCoupon);
                         alert(result.error.message || "Payment cancelled.");
                         payBtn.innerHTML = originalBtnHtml;
                         updatePayButton();
@@ -498,7 +684,7 @@
                     if (result.paymentDetails) {
                         payBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Finalizing...';
                         
-                        await finalizeSheetUpdate(data.order_id, "SUCCESS", activeCoupon);
+                        await finalizeUpdates(data.order_id, "SUCCESS", activeCoupon);
                         await sendSuccessNotification(firebaseUid);
                         
                         sessionStorage.setItem('dayline_payment_success_auth', 'VERIFIED_PAID');
@@ -515,29 +701,33 @@
             }
         });
 
-        async function finalizeSheetUpdate(orderId, status, coupon) {
-            try {
-                const finalizeUrl = new URL(APP_SCRIPT_URL);
-                finalizeUrl.searchParams.append("api_key", "NEXIFY_SECRET_KEY_987654");
-                finalizeUrl.searchParams.append("action", "finalize_payment");
-                finalizeUrl.searchParams.append("orderId", orderId);
-                finalizeUrl.searchParams.append("paymentStatus", status);
-                finalizeUrl.searchParams.append("userId", sessionUser); 
-                finalizeUrl.searchParams.append("code", token); 
-
-                if (coupon) {
-                    finalizeUrl.searchParams.append("couponCode", coupon);
-                }
-                
-                await fetch(finalizeUrl);
-            } catch (e) {
-                console.error("Failed to update Sheets:", e);
-            }
+        // Function that updates Google Sheets AND Firebase
+      // Function that tells Google Apps Script to verify and update
+async function finalizeUpdates(orderId, status, coupon) {
+    try {
+        if (status === "SUCCESS") {
+            const selectedPlan = document.querySelector('.plan-card.active').getAttribute('data-plan');
+            
+            const finalizeUrl = new URL(APP_SCRIPT_URL);
+            finalizeUrl.searchParams.append("api_key", "NEXIFY_SECRET_KEY_987654");
+            finalizeUrl.searchParams.append("action", "finalize_payment");
+            finalizeUrl.searchParams.append("orderId", orderId);
+            finalizeUrl.searchParams.append("paymentStatus", status);
+            finalizeUrl.searchParams.append("userId", sessionUser);
+            finalizeUrl.searchParams.append("uid", firebaseUid); // Send UID to backend
+            finalizeUrl.searchParams.append("planType", selectedPlan); // Send requested plan
+            finalizeUrl.searchParams.append("amountPaid", finalPriceToPay);
+            
+            // The backend handles the Firebase update securely
+            await fetch(finalizeUrl);
         }
+    } catch (e) {
+        console.error("Failed to finalize backend updates:", e);
+    }
+}
 
         async function sendSuccessNotification(uid) {
             if (!uid) return; 
-
             try {
                 await fetch(VERCEL_FCM_API_URL, {
                     method: "POST",
@@ -552,6 +742,9 @@
                 console.error("FCM trigger failed in background:", error);
             }
         }
+
+        // Initialize Call
+        verifySession();
     </script>
 </body>
 </html>
