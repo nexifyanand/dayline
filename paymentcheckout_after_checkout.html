@@ -330,27 +330,23 @@
     </div>
 
     <!-- MODULE SCRIPT FOR FIREBASE v10 -->
+  <!-- MODULE SCRIPT FOR FIREBASE v10 -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        import { getDatabase, ref, get, set, child } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+        import { getDatabase, ref, get, child } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
         // --- FIREBASE CONFIGURATION ---
-        // REPLACE THESE WITH YOUR ACTUAL FIREBASE PROJECT KEYS
         const firebaseConfig = {
-            apiKey: "AIzaSyBOE4ivTCo_-Ap818kPjc6qXzNJ4f202Sk",
-            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-            databaseURL: "https://dayline-nexify-default-rtdb.firebaseio.com/", // e.g., "https://your-project-id-default-rtdb.firebaseio.com"
-            projectId: "dayline-nexify",
-            storageBucket: "YOUR_PROJECT_ID.appspot.com",
-            messagingSenderId: "YOUR_SENDER_ID",
-            appId: "YOUR_APP_ID"
+            apiKey: "YOUR_API_KEY",
+            databaseURL: "https://dayline-nexify-default-rtdb.firebaseio.com",
+            projectId: "YOUR_PROJECT_ID"
         };
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
         // --- GLOBALS & CONSTANTS ---
-        const cashfree = Cashfree({ mode: "sandbox" }); // Change to "production" when live
+        const cashfree = Cashfree({ mode: "sandbox" }); 
         const APP_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwZ4WhzyOqa8BBxGUOmmyOejC6I-aYBuWLRNj1bO61r0TE70nq50jBSXYdUXfsNCcsH/exec";
         const VERCEL_FCM_API_URL = "https://dayline-fcm.vercel.app/api/send"; 
 
@@ -393,7 +389,6 @@
         // --- 1. INITIALIZE APP SESSION ---
         async function verifySession() {
             try {
-                // Verify Token through your API first (if applicable)
                 const response = await fetch('/api/initiate-upgrade', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -403,9 +398,9 @@
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.error || "Invalid session.");
 
-               
                 sessionUser = data.accountName || "User"; 
-                firebaseUid = data.uid || ""; // Strictly empty if no UID is provided
+                // STRICT FIX: Never fallback to account name for UID
+                firebaseUid = data.uid || ""; 
                 
                 document.getElementById('displayCode').textContent = token;
                 document.getElementById('displayUser').textContent = sessionUser;
@@ -425,6 +420,11 @@
         
         // --- 2. FIREBASE & PRORATION LOGIC ---
         async function fetchFirebaseDetails(uid) {
+            if (!uid || uid === "") {
+                renderDynamicPlans();
+                return;
+            }
+
             try {
                 const dbRef = ref(db);
                 const [userSnap, activePlanSnap] = await Promise.all([
@@ -446,7 +446,6 @@
                 renderDynamicPlans();
             } catch (error) {
                 console.error("Firebase fetch error:", error);
-                // Render defaults if fetch fails
                 renderDynamicPlans();
             }
         }
@@ -487,19 +486,16 @@
 
                 card.classList.remove('active', 'disabled'); // Reset
 
-                // 1. Disable Lower Plans
                 if (cardRank < currentRank) {
                     card.classList.add('disabled');
                     btn.textContent = 'Unavailable';
                 } 
-                // 2. Format Current Plan (Top-up)
                 else if (cardRank === currentRank && currentRank > 0) {
                     card.classList.add('active'); 
                     btn.textContent = 'Top-up (+ ' + PLAN_DURATIONS[cardPlan] + ' days)';
                     selectPlan(card);
                     defaultSelected = true;
                 } 
-                // 3. Format Upgrade Plans (Apply Proration)
                 else if (cardRank > currentRank && currentUserData.isPremium && remainingValue > 0) {
                     btn.textContent = 'Upgrade Plan';
                     const proratedPrice = Math.max(0, baseCardPrice - remainingValue);
@@ -508,7 +504,6 @@
                     card.setAttribute('data-prorated-price', proratedPrice);
                 }
 
-                // If user is free, ensure Free is selected by default
                 if (currentRank === 0 && cardPlan === 'free') {
                     card.classList.add('active');
                     selectPlan(card);
@@ -516,7 +511,6 @@
                 }
             });
 
-            // Fallback selection if nothing got selected
             if (!defaultSelected) {
                 const availableCard = document.querySelector('.plan-card:not(.disabled)');
                 if (availableCard) {
@@ -535,14 +529,12 @@
 
             const planName = card.querySelector('.plan-name').textContent;
             
-            // Check if prorated price exists, otherwise use base price
             basePrice = parseInt(card.getAttribute('data-prorated-price') || card.getAttribute('data-price'));
             finalPriceToPay = basePrice;
 
             summaryPlanName.textContent = planName;
             summarySubtotal.textContent = `₹${basePrice}`;
             
-            // If it's an upgrade, visually explain the discount
             if (card.getAttribute('data-prorated-price')) {
                 discountRow.style.display = 'flex';
                 discountRow.style.color = 'var(--text-muted)';
@@ -563,7 +555,6 @@
             promoContainer.style.display = "flex";
             finalPriceToPay = basePrice;
             
-            // Restore upgrade credit visual if applicable, otherwise hide discount row entirely
             const activeCard = document.querySelector('.plan-card.active');
             if (activeCard && activeCard.getAttribute('data-prorated-price')) {
                 discountRow.style.display = 'flex';
@@ -609,7 +600,7 @@
                 url.searchParams.append("couponCode", codeInput);
                 url.searchParams.append("appName", "Dayline");
                 url.searchParams.append("userId", sessionUser);
-                url.searchParams.append("planAmount", basePrice.toString()); // Apply on prorated/base price
+                url.searchParams.append("planAmount", basePrice.toString()); 
 
                 const response = await fetch(url);
                 const res = await response.json();
@@ -702,72 +693,46 @@
             }
         });
 
-        // Function that updates Google Sheets AND Firebase
-      // Function that tells Google Apps Script to verify and update
-async function finalizeUpdates(orderId, status, coupon) {
-    try {
-        if (status === "SUCCESS") {
-            const selectedPlan = document.querySelector('.plan-card.active').getAttribute('data-plan');
-            
-           // Replace the searchParams section in finalizeUpdates with this:
+        // Function that tells Google Apps Script to verify and update
+        async function finalizeUpdates(orderId, status, coupon) {
+            try {
+                const finalizeUrl = new URL(APP_SCRIPT_URL);
+                finalizeUrl.searchParams.append("api_key", "NEXIFY_SECRET_KEY_987654");
+                finalizeUrl.searchParams.append("action", "finalize_payment");
+                finalizeUrl.searchParams.append("orderId", orderId);
+                finalizeUrl.searchParams.append("paymentStatus", status);
+                
+                finalizeUrl.searchParams.append("userId", sessionUser); 
+                
+                if (token) {
+                    finalizeUrl.searchParams.append("code", token); 
+                }
 
-const finalizeUrl = new URL(APP_SCRIPT_URL);
-finalizeUrl.searchParams.append("api_key", "NEXIFY_SECRET_KEY_987654");
-finalizeUrl.searchParams.append("action", "finalize_payment");
-finalizeUrl.searchParams.append("orderId", orderId);
-finalizeUrl.searchParams.append("paymentStatus", status);
-finalizeUrl.searchParams.append("userId", sessionUser); // This is the name/email
-finalizeUrl.searchParams.append("code", token); // Very important! Used for backend lookup
-finalizeUrl.searchParams.append("planType", selectedPlan);
-finalizeUrl.searchParams.append("amountPaid", finalPriceToPay);
+                if (firebaseUid && firebaseUid !== "" && firebaseUid !== sessionUser) {
+                    finalizeUrl.searchParams.append("uid", firebaseUid);
+                }
 
-// ONLY append uid if it actually exists and isn't the user's name
-if (firebaseUid && firebaseUid !== "" && firebaseUid !== sessionUser) {
-    finalizeUrl.searchParams.append("uid", firebaseUid);
-}
-           // Function that tells Google Apps Script to verify and update
-async function finalizeUpdates(orderId, status, coupon) {
-    try {
-        const finalizeUrl = new URL(APP_SCRIPT_URL);
-        finalizeUrl.searchParams.append("api_key", "NEXIFY_SECRET_KEY_987654");
-        finalizeUrl.searchParams.append("action", "finalize_payment");
-        finalizeUrl.searchParams.append("orderId", orderId);
-        finalizeUrl.searchParams.append("paymentStatus", status);
-        
-        // This is the Masked Name (e.g., "Anand Krishna")
-        finalizeUrl.searchParams.append("userId", sessionUser); 
-        
-        // CRITICAL: This passes the code so the backend knows which one to disable
-        if (token) {
-            finalizeUrl.searchParams.append("code", token); 
+                if (coupon) {
+                    finalizeUrl.searchParams.append("couponCode", coupon);
+                }
+
+                const activeCard = document.querySelector('.plan-card.active');
+                if (activeCard) {
+                    finalizeUrl.searchParams.append("planType", activeCard.getAttribute('data-plan'));
+                }
+                
+                finalizeUrl.searchParams.append("amountPaid", finalPriceToPay);
+                
+                // Ping the backend to do all the secure database work
+                await fetch(finalizeUrl);
+                
+            } catch (e) {
+                console.error("Failed to finalize backend updates:", e);
+            }
         }
-
-        // CRITICAL: Only send UID if it is NOT the masked name
-        if (firebaseUid && firebaseUid !== "" && firebaseUid !== sessionUser) {
-            finalizeUrl.searchParams.append("uid", firebaseUid);
-        }
-
-        if (coupon) {
-            finalizeUrl.searchParams.append("couponCode", coupon);
-        }
-
-        const activeCard = document.querySelector('.plan-card.active');
-        if (activeCard) {
-            finalizeUrl.searchParams.append("planType", activeCard.getAttribute('data-plan'));
-        }
-        
-        finalizeUrl.searchParams.append("amountPaid", finalPriceToPay);
-        
-        // Ping the backend to do all the secure database work
-        await fetch(finalizeUrl);
-        
-    } catch (e) {
-        console.error("Failed to finalize backend updates:", e);
-    }
-}
 
         async function sendSuccessNotification(uid) {
-            if (!uid) return; 
+            if (!uid || uid === "") return; 
             try {
                 await fetch(VERCEL_FCM_API_URL, {
                     method: "POST",
