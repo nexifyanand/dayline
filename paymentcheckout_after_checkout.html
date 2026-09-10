@@ -403,8 +403,9 @@
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.error || "Invalid session.");
 
+               
                 sessionUser = data.accountName || "User"; 
-                firebaseUid = data.uid || data.accountName; 
+                firebaseUid = data.uid || ""; // Strictly empty if no UID is provided
                 
                 document.getElementById('displayCode').textContent = token;
                 document.getElementById('displayUser').textContent = sessionUser;
