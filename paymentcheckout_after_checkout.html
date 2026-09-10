@@ -709,16 +709,22 @@ async function finalizeUpdates(orderId, status, coupon) {
         if (status === "SUCCESS") {
             const selectedPlan = document.querySelector('.plan-card.active').getAttribute('data-plan');
             
-            const finalizeUrl = new URL(APP_SCRIPT_URL);
-            finalizeUrl.searchParams.append("api_key", "NEXIFY_SECRET_KEY_987654");
-            finalizeUrl.searchParams.append("action", "finalize_payment");
-            finalizeUrl.searchParams.append("orderId", orderId);
-            finalizeUrl.searchParams.append("paymentStatus", status);
-            finalizeUrl.searchParams.append("userId", sessionUser);
-            finalizeUrl.searchParams.append("uid", firebaseUid); // Send UID to backend
-            finalizeUrl.searchParams.append("planType", selectedPlan); // Send requested plan
-            finalizeUrl.searchParams.append("amountPaid", finalPriceToPay);
-            
+           // Replace the searchParams section in finalizeUpdates with this:
+
+const finalizeUrl = new URL(APP_SCRIPT_URL);
+finalizeUrl.searchParams.append("api_key", "NEXIFY_SECRET_KEY_987654");
+finalizeUrl.searchParams.append("action", "finalize_payment");
+finalizeUrl.searchParams.append("orderId", orderId);
+finalizeUrl.searchParams.append("paymentStatus", status);
+finalizeUrl.searchParams.append("userId", sessionUser); // This is the name/email
+finalizeUrl.searchParams.append("code", token); // Very important! Used for backend lookup
+finalizeUrl.searchParams.append("planType", selectedPlan);
+finalizeUrl.searchParams.append("amountPaid", finalPriceToPay);
+
+// ONLY append uid if it actually exists and isn't the user's name
+if (firebaseUid && firebaseUid !== "" && firebaseUid !== sessionUser) {
+    finalizeUrl.searchParams.append("uid", firebaseUid);
+}
             // The backend handles the Firebase update securely
             await fetch(finalizeUrl);
         }
