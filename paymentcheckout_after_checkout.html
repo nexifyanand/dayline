@@ -725,7 +725,8 @@ finalizeUrl.searchParams.append("amountPaid", finalPriceToPay);
 if (firebaseUid && firebaseUid !== "" && firebaseUid !== sessionUser) {
     finalizeUrl.searchParams.append("uid", firebaseUid);
 }
-           async function finalizeUpdates(orderId, status, coupon) {
+           // Function that tells Google Apps Script to verify and update
+async function finalizeUpdates(orderId, status, coupon) {
     try {
         const finalizeUrl = new URL(APP_SCRIPT_URL);
         finalizeUrl.searchParams.append("api_key", "NEXIFY_SECRET_KEY_987654");
@@ -736,7 +737,7 @@ if (firebaseUid && firebaseUid !== "" && firebaseUid !== sessionUser) {
         // This is the Masked Name (e.g., "Anand Krishna")
         finalizeUrl.searchParams.append("userId", sessionUser); 
         
-        // CRITICAL: This passes DL-TEST-123 so the backend knows which code to disable
+        // CRITICAL: This passes the code so the backend knows which one to disable
         if (token) {
             finalizeUrl.searchParams.append("code", token); 
         }
@@ -750,13 +751,16 @@ if (firebaseUid && firebaseUid !== "" && firebaseUid !== sessionUser) {
             finalizeUrl.searchParams.append("couponCode", coupon);
         }
 
-        const selectedPlan = document.querySelector('.plan-card.active').getAttribute('data-plan');
-        finalizeUrl.searchParams.append("planType", selectedPlan);
+        const activeCard = document.querySelector('.plan-card.active');
+        if (activeCard) {
+            finalizeUrl.searchParams.append("planType", activeCard.getAttribute('data-plan'));
+        }
+        
         finalizeUrl.searchParams.append("amountPaid", finalPriceToPay);
         
+        // Ping the backend to do all the secure database work
         await fetch(finalizeUrl);
-        // ... rest of the function (FCM notifications, etc.)
-        }
+        
     } catch (e) {
         console.error("Failed to finalize backend updates:", e);
     }
