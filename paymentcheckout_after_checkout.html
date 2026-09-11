@@ -330,7 +330,7 @@
     </div>
 
     <!-- MODULE SCRIPT FOR FIREBASE v10 -->
-  <!-- MODULE SCRIPT FOR FIREBASE v10 -->
+ <!-- MODULE SCRIPT FOR FIREBASE v10 -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
         import { getDatabase, ref, get, child } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
@@ -396,16 +396,23 @@
                 });
 
                 const data = await response.json();
-                if (!response.ok) throw new Error(data.error || "Invalid session.");
-
+                
                 sessionUser = data.accountName || "User"; 
-                // STRICT FIX: Never fallback to account name for UID
-                firebaseUid = data.uid || ""; 
+                
+                // CRITICAL FIX: If API doesn't return UID, fetch it from Firebase generated_codes
+                let fetchedUid = data.uid || ""; 
+                if (fetchedUid === "") {
+                    const codeSnap = await get(child(ref(db), `generated_codes/${token}`));
+                    if (codeSnap.exists() && codeSnap.val().uid) {
+                        fetchedUid = codeSnap.val().uid;
+                    }
+                }
+                firebaseUid = fetchedUid;
                 
                 document.getElementById('displayCode').textContent = token;
                 document.getElementById('displayUser').textContent = sessionUser;
 
-                // Fetch real-time data from Firebase
+                // Fetch real-time data from Firebase using the real UID
                 await fetchFirebaseDetails(firebaseUid);
 
                 document.getElementById('securityLoader').style.display = 'none';
@@ -433,10 +440,11 @@
                 ]);
 
                 if (userSnap.exists()) {
-                    currentUserData = userSnap.val();
+                    currentUserData = { ...currentUserData, ...userSnap.val() };
                 }
                 
-                document.getElementById('displayPlan').textContent = currentUserData.current_plan || "Free";
+                const currentPlanText = currentUserData.current_plan || "Free";
+                document.getElementById('displayPlan').textContent = currentPlanText.charAt(0).toUpperCase() + currentPlanText.slice(1);
 
                 if (activePlanSnap.exists() && currentUserData.isPremium) {
                     currentActivePlan = activePlanSnap.val();
@@ -460,8 +468,13 @@
             if (daysRemaining > 0) {
                 const banner = document.getElementById('expiryBanner');
                 banner.style.display = 'flex';
-                document.getElementById('expiryText').innerHTML = 
-                    `Your <strong>${planData.plan_type}</strong> plan is active. Expires in <strong>${daysRemaining} days</strong>.`;
+                
+                // Handle Lifetime banner display specifically
+                if (planData.plan_type.toLowerCase() === 'lifetime') {
+                    document.getElementById('expiryText').innerHTML = `Your <strong>Lifetime</strong> plan is active forever.`;
+                } else {
+                    document.getElementById('expiryText').innerHTML = `Your <strong>${planData.plan_type}</strong> plan is active. Expires in <strong>${daysRemaining} days</strong>.`;
+                }
 
                 const totalPlanDays = PLAN_DURATIONS[planData.plan_type.toLowerCase()] || 30;
                 const dailyRate = planData.amount / totalPlanDays;
@@ -491,10 +504,23 @@
                     btn.textContent = 'Unavailable';
                 } 
                 else if (cardRank === currentRank && currentRank > 0) {
-                    card.classList.add('active'); 
-                    btn.textContent = 'Top-up (+ ' + PLAN_DURATIONS[cardPlan] + ' days)';
-                    selectPlan(card);
-                    defaultSelected = true;
+                    // CRITICAL FIX: Lifetime Plan handling
+                    if (cardPlan === 'lifetime') {
+                        card.classList.add('active', 'disabled'); 
+                        btn.textContent = 'Active Forever';
+                        // Keep basePrice 0 so they can't click pay
+                        basePrice = 0; 
+                        finalPriceToPay = 0;
+                        summaryPlanName.textContent = "Lifetime";
+                        summarySubtotal.textContent = `₹0`;
+                        updatePayButton();
+                        defaultSelected = true;
+                    } else {
+                        card.classList.add('active'); 
+                        btn.textContent = 'Top-up (+ ' + PLAN_DURATIONS[cardPlan] + ' days)';
+                        selectPlan(card);
+                        defaultSelected = true;
+                    }
                 } 
                 else if (cardRank > currentRank && currentUserData.isPremium && remainingValue > 0) {
                     btn.textContent = 'Upgrade Plan';
@@ -511,7 +537,7 @@
                 }
             });
 
-            if (!defaultSelected) {
+            if (!defaultSelected && currentRank !== 3) {
                 const availableCard = document.querySelector('.plan-card:not(.disabled)');
                 if (availableCard) {
                     availableCard.classList.add('active');
@@ -693,7 +719,6 @@
             }
         });
 
-        // Function that tells Google Apps Script to verify and update
         async function finalizeUpdates(orderId, status, coupon) {
             try {
                 const finalizeUrl = new URL(APP_SCRIPT_URL);
@@ -723,7 +748,6 @@
                 
                 finalizeUrl.searchParams.append("amountPaid", finalPriceToPay);
                 
-                // Ping the backend to do all the secure database work
                 await fetch(finalizeUrl);
                 
             } catch (e) {
