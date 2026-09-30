@@ -7,7 +7,11 @@ export default async function handler(req, res) {
     if (req.method === 'OPTIONS') return res.status(200).end();
 
     const action = req.query.action || (req.body && req.body.action);
-    const dbUrl = process.env.FIREBASE_DB_URL;
+    
+    // --- CRITICAL FIX: Foolproof Database URL with automatic slash ---
+    let dbUrl = process.env.FIREBASE_DB_URL || "https://dayline-nexify-default-rtdb.firebaseio.com";
+    if (!dbUrl.endsWith('/')) dbUrl += '/'; 
+    
     const authQuery = process.env.FIREBASE_SECRET ? `?auth=${process.env.FIREBASE_SECRET}` : '';
 
     const CF_APP_ID = process.env.CASHFREE_APP_ID;
