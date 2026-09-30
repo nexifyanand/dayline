@@ -8,7 +8,6 @@ export default async function handler(req, res) {
 
     const action = req.query.action || (req.body && req.body.action);
     
-    // --- CRITICAL FIX: Foolproof Database URL with automatic slash ---
     let dbUrl = process.env.FIREBASE_DB_URL || "https://dayline-nexify-default-rtdb.firebaseio.com";
     if (!dbUrl.endsWith('/')) dbUrl += '/'; 
     
@@ -18,7 +17,6 @@ export default async function handler(req, res) {
     const CF_SECRET = process.env.CASHFREE_SECRET_KEY;
     const CF_ENV_URL = "https://sandbox.cashfree.com/pg/orders"; // Use api.cashfree.com for production
 
-    // Custom Order ID Generator: DLP + DDMMYYYY + 10 Random Alphanumeric
     function generateOrderId() {
         const now = new Date();
         const dd = String(now.getDate()).padStart(2, '0');
@@ -49,6 +47,8 @@ export default async function handler(req, res) {
                 orderId: orderId,
                 userId: userId,
                 daylineCode: activeDaylineCode,
+                paymentChannel: "web", // Requested New Key
+                paymentType: `User Purchase (${planType || "Unknown"})`,
                 amount: parseFloat(planAmount),
                 planType: planType || "Unknown",
                 couponApplied: couponCode || "None",
@@ -57,17 +57,16 @@ export default async function handler(req, res) {
                 timestamp: nowIso
             };
 
-            // Write INITIATED state to both requested nodes
+            // Write INITIATED state to ALL 3 nodes
             await Promise.all([
                 fetch(`${dbUrl}transactions/${userId}/${orderId}.json${authQuery}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(initialData)
+                    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(initialData)
+                }),
+                fetch(`${dbUrl}mytransactions/${userId}/${orderId}.json${authQuery}`, {
+                    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(initialData)
                 }),
                 fetch(`${dbUrl}Daylinecode_transactions/${activeDaylineCode}/${orderId}.json${authQuery}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(initialData)
+                    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(initialData)
                 })
             ]);
             
@@ -98,53 +97,27 @@ export default async function handler(req, res) {
             const cfData = await cfResponse.json();
 
             if (cfData.payment_session_id) {
-                // State 2: PENDING (Cashfree Session Created)
-                const pendingUpdates = {
-                    status: "PENDING",
-                    gatewayStatus: "PENDING",
-                    lastUpdatedAt: new Date().toISOString()
-                };
+                // State 2: PENDING
+                const pendingUpdates = { status: "PENDING", gatewayStatus: "PENDING", lastUpdatedAt: new Date().toISOString() };
 
                 await Promise.all([
-                    fetch(`${dbUrl}transactions/${userId}/${orderId}.json${authQuery}`, {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(pendingUpdates)
-                    }),
-                    fetch(`${dbUrl}Daylinecode_transactions/${activeDaylineCode}/${orderId}.json${authQuery}`, {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(pendingUpdates)
-                    })
+                    fetch(`${dbUrl}transactions/${userId}/${orderId}.json${authQuery}`, { method: 'PATCH', body: JSON.stringify(pendingUpdates) }),
+                    fetch(`${dbUrl}mytransactions/${userId}/${orderId}.json${authQuery}`, { method: 'PATCH', body: JSON.stringify(pendingUpdates) }),
+                    fetch(`${dbUrl}Daylinecode_transactions/${activeDaylineCode}/${orderId}.json${authQuery}`, { method: 'PATCH', body: JSON.stringify(pendingUpdates) })
                 ]);
 
-                return res.status(200).json({ 
-                    status: "success", 
-                    payment_session_id: cfData.payment_session_id,
-                    order_id: orderId 
-                });
+                return res.status(200).json({ status: "success", payment_session_id: cfData.payment_session_id, order_id: orderId });
             } else {
-                // State 2a: FAILED (Cashfree Rejected Order)
-                const failedUpdates = {
-                    status: "FAILED",
-                    gatewayStatus: "API_REJECTED",
-                    lastUpdatedAt: new Date().toISOString()
-                };
+                // State 2a: FAILED API
+                const failedUpdates = { status: "FAILED", gatewayStatus: "API_REJECTED", lastUpdatedAt: new Date().toISOString() };
 
                 await Promise.all([
-                    fetch(`${dbUrl}transactions/${userId}/${orderId}.json${authQuery}`, {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(failedUpdates)
-                    }),
-                    fetch(`${dbUrl}Daylinecode_transactions/${activeDaylineCode}/${orderId}.json${authQuery}`, {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(failedUpdates)
-                    })
+                    fetch(`${dbUrl}transactions/${userId}/${orderId}.json${authQuery}`, { method: 'PATCH', body: JSON.stringify(failedUpdates) }),
+                    fetch(`${dbUrl}mytransactions/${userId}/${orderId}.json${authQuery}`, { method: 'PATCH', body: JSON.stringify(failedUpdates) }),
+                    fetch(`${dbUrl}Daylinecode_transactions/${activeDaylineCode}/${orderId}.json${authQuery}`, { method: 'PATCH', body: JSON.stringify(failedUpdates) })
                 ]);
 
-                return res.status(400).json({ status: "error", message: cfData.message });
+                return res.status(400).json({ status: "error", message: "Cashfree Error: " + cfData.message });
             }
         }
 
@@ -156,28 +129,20 @@ export default async function handler(req, res) {
             const nowIso = new Date().toISOString();
             const activeDaylineCode = daylineCode || "UNKNOWN_CODE";
 
-            // State 3: SUCCESS or FAILED (User completed checkout)
+            // State 3: SUCCESS or FAILED
             const finalUpdates = {
                 status: paymentStatus.toUpperCase(),
                 gatewayStatus: paymentStatus.toUpperCase(),
                 lastUpdatedAt: nowIso
             };
 
-            // Update both nodes with final status
             await Promise.all([
-                fetch(`${dbUrl}transactions/${userId}/${orderId}.json${authQuery}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(finalUpdates)
-                }),
-                fetch(`${dbUrl}Daylinecode_transactions/${activeDaylineCode}/${orderId}.json${authQuery}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(finalUpdates)
-                })
+                fetch(`${dbUrl}transactions/${userId}/${orderId}.json${authQuery}`, { method: 'PATCH', body: JSON.stringify(finalUpdates) }),
+                fetch(`${dbUrl}mytransactions/${userId}/${orderId}.json${authQuery}`, { method: 'PATCH', body: JSON.stringify(finalUpdates) }),
+                fetch(`${dbUrl}Daylinecode_transactions/${activeDaylineCode}/${orderId}.json${authQuery}`, { method: 'PATCH', body: JSON.stringify(finalUpdates) })
             ]);
 
-            // If Success, activate the Premium nodes in Firebase
+            // Activate Premium
             if (paymentStatus.toUpperCase() === "SUCCESS") {
                 const cleanPlan = (planType || "monthly").toLowerCase();
                 let expiryDate = new Date();
@@ -191,20 +156,14 @@ export default async function handler(req, res) {
                 }
 
                 await fetch(`${dbUrl}users/${userId}.json${authQuery}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
+                    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ isPremium: true, current_plan: cleanPlan, premiumActivatedAt: nowIso })
                 });
 
                 await fetch(`${dbUrl}Active_plan/${userId}.json${authQuery}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    method: 'PUT', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        uid: userId,
-                        amount: amountPaid,
-                        expiry_date: expiryDate.toISOString(),
-                        plan_type: cleanPlan,
-                        premium_purchase_date: nowIso
+                        uid: userId, amount: amountPaid, expiry_date: expiryDate.toISOString(), plan_type: cleanPlan, premium_purchase_date: nowIso
                     })
                 });
             }
