@@ -331,7 +331,7 @@
 
     <!-- MODULE SCRIPT FOR FIREBASE v10 -->
  <!-- MODULE SCRIPT FOR FIREBASE v10 -->
-    <script type="module">
+   <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
         import { getDatabase, ref, get, child } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
@@ -347,7 +347,9 @@
 
         // --- GLOBALS & CONSTANTS ---
         const cashfree = Cashfree({ mode: "sandbox" }); 
-        const APP_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwZ4WhzyOqa8BBxGUOmmyOejC6I-aYBuWLRNj1bO61r0TE70nq50jBSXYdUXfsNCcsH/exec";
+        
+        // NEW VERCEL ENDPOINT (Replaces APP_SCRIPT_URL)
+        const CHECKOUT_API_URL = "/api/checkout"; 
         const VERCEL_FCM_API_URL = "https://dayline-fcm.vercel.app/api/send"; 
 
         const PLAN_HIERARCHY = { 'free': 0, 'monthly': 1, 'yearly': 2, 'lifetime': 3 };
@@ -399,7 +401,6 @@
                 
                 sessionUser = data.accountName || "User"; 
                 
-                // CRITICAL FIX: If API doesn't return UID, fetch it from Firebase generated_codes
                 let fetchedUid = data.uid || ""; 
                 if (fetchedUid === "") {
                     const codeSnap = await get(child(ref(db), `generated_codes/${token}`));
@@ -412,7 +413,6 @@
                 document.getElementById('displayCode').textContent = token;
                 document.getElementById('displayUser').textContent = sessionUser;
 
-                // Fetch real-time data from Firebase using the real UID
                 await fetchFirebaseDetails(firebaseUid);
 
                 document.getElementById('securityLoader').style.display = 'none';
@@ -469,7 +469,6 @@
                 const banner = document.getElementById('expiryBanner');
                 banner.style.display = 'flex';
                 
-                // Handle Lifetime banner display specifically
                 if (planData.plan_type.toLowerCase() === 'lifetime') {
                     document.getElementById('expiryText').innerHTML = `Your <strong>Lifetime</strong> plan is active forever.`;
                 } else {
@@ -497,18 +496,16 @@
                 const btn = card.querySelector('.btn-select');
                 const priceElement = card.querySelector('.plan-price');
 
-                card.classList.remove('active', 'disabled'); // Reset
+                card.classList.remove('active', 'disabled'); 
 
                 if (cardRank < currentRank) {
                     card.classList.add('disabled');
                     btn.textContent = 'Unavailable';
                 } 
                 else if (cardRank === currentRank && currentRank > 0) {
-                    // CRITICAL FIX: Lifetime Plan handling
                     if (cardPlan === 'lifetime') {
                         card.classList.add('active', 'disabled'); 
                         btn.textContent = 'Active Forever';
-                        // Keep basePrice 0 so they can't click pay
                         basePrice = 0; 
                         finalPriceToPay = 0;
                         summaryPlanName.textContent = "Lifetime";
@@ -608,7 +605,8 @@
         planCards.forEach(card => card.addEventListener('click', () => selectPlan(card)));
         termsCheck.addEventListener('change', updatePayButton);
 
-        // --- 4. PROMO CODE VERIFICATION ---
+        // --- 4. PROMO CODE VERIFICATION (Updated to use Vercel/Firebase later) ---
+        // Note: Currently still pointing to the old API concept if you haven't moved coupons yet.
         document.getElementById('applyPromoBtn').addEventListener('click', async () => {
             const codeInput = couponInput.value.trim();
             const btn = document.getElementById('applyPromoBtn');
@@ -620,7 +618,8 @@
             btn.disabled = true;
 
             try {
-                const url = new URL(APP_SCRIPT_URL);
+                // Update this later once you migrate coupons to Firebase
+                const url = new URL("https://script.google.com/macros/s/AKfycbwZ4WhzyOqa8BBxGUOmmyOejC6I-aYBuWLRNj1bO61r0TE70nq50jBSXYdUXfsNCcsH/exec");
                 url.searchParams.append("api_key", "NEXIFY_SECRET_KEY_987654");
                 url.searchParams.append("action", "verify");
                 url.searchParams.append("couponCode", codeInput);
@@ -663,7 +662,7 @@
             }
         });
 
-        // --- 5. CASHFREE & FIREBASE POST-PAYMENT LOGIC ---
+        // --- 5. CASHFREE & FIREBASE POST-PAYMENT LOGIC (UPDATED FOR VERCEL) ---
         payBtn.addEventListener('click', async () => {
             if (finalPriceToPay === 0 || !termsCheck.checked) return;
 
@@ -672,21 +671,27 @@
             payBtn.disabled = true;
 
             try {
-                const createUrl = new URL(APP_SCRIPT_URL);
-                createUrl.searchParams.append("api_key", "NEXIFY_SECRET_KEY_987654");
-                createUrl.searchParams.append("action", "create_order");
-                createUrl.searchParams.append("planAmount", basePrice.toString());
-                createUrl.searchParams.append("userId", sessionUser); 
-                createUrl.searchParams.append("appName", "Dayline");
-                if (activeCoupon) {
-                    createUrl.searchParams.append("couponCode", activeCoupon);
-                }
+                const activeCard = document.querySelector('.plan-card.active');
+                const selectedPlanType = activeCard ? activeCard.getAttribute('data-plan') : 'monthly';
 
-                const response = await fetch(createUrl);
+                // 1. Call Vercel securely
+                const response = await fetch(CHECKOUT_API_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        action: "create_order",
+                        userId: firebaseUid || sessionUser, 
+                        planAmount: finalPriceToPay,
+                        planType: selectedPlanType,
+                        couponCode: activeCoupon,
+                        daylineCode: token
+                    })
+                });
+
                 const data = await response.json();
-
                 if (data.status !== "success") throw new Error(data.message || "Payment failed to initialize.");
 
+                // 2. Launch Cashfree
                 cashfree.checkout({
                     paymentSessionId: data.payment_session_id,
                     redirectTarget: "_modal" 
@@ -721,34 +726,22 @@
 
         async function finalizeUpdates(orderId, status, coupon) {
             try {
-                const finalizeUrl = new URL(APP_SCRIPT_URL);
-                finalizeUrl.searchParams.append("api_key", "NEXIFY_SECRET_KEY_987654");
-                finalizeUrl.searchParams.append("action", "finalize_payment");
-                finalizeUrl.searchParams.append("orderId", orderId);
-                finalizeUrl.searchParams.append("paymentStatus", status);
-                
-                finalizeUrl.searchParams.append("userId", sessionUser); 
-                
-                if (token) {
-                    finalizeUrl.searchParams.append("code", token); 
-                }
-
-                if (firebaseUid && firebaseUid !== "" && firebaseUid !== sessionUser) {
-                    finalizeUrl.searchParams.append("uid", firebaseUid);
-                }
-
-                if (coupon) {
-                    finalizeUrl.searchParams.append("couponCode", coupon);
-                }
-
                 const activeCard = document.querySelector('.plan-card.active');
-                if (activeCard) {
-                    finalizeUrl.searchParams.append("planType", activeCard.getAttribute('data-plan'));
-                }
                 
-                finalizeUrl.searchParams.append("amountPaid", finalPriceToPay);
-                
-                await fetch(finalizeUrl);
+                await fetch(CHECKOUT_API_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        action: "finalize_payment",
+                        orderId: orderId,
+                        paymentStatus: status,
+                        userId: firebaseUid || sessionUser,
+                        planType: activeCard ? activeCard.getAttribute('data-plan') : 'monthly',
+                        amountPaid: finalPriceToPay,
+                        couponCode: coupon,
+                        daylineCode: token 
+                    })
+                });
                 
             } catch (e) {
                 console.error("Failed to finalize backend updates:", e);
