@@ -331,11 +331,10 @@
 
     <!-- MODULE SCRIPT FOR FIREBASE v10 -->
  <!-- MODULE SCRIPT FOR FIREBASE v10 -->
-   <script type="module">
+  <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
         import { getDatabase, ref, get, child } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
-        // --- FIREBASE CONFIGURATION ---
         const firebaseConfig = {
             apiKey: "AIzaSyBOE4ivTCo_-Ap818kPjc6qXzNJ4f202Sk",
             databaseURL: "https://dayline-nexify-default-rtdb.firebaseio.com",
@@ -344,36 +343,31 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
-
-        // --- GLOBALS & CONSTANTS ---
         const cashfree = Cashfree({ mode: "sandbox" }); 
         
-        // NEW VERCEL ENDPOINT (Replaces APP_SCRIPT_URL)
         const CHECKOUT_API_URL = "/api/checkout"; 
         const VERCEL_FCM_API_URL = "https://dayline-fcm.vercel.app/api/send"; 
 
         const PLAN_HIERARCHY = { 'free': 0, 'monthly': 1, 'yearly': 2, 'lifetime': 3 };
         const PLAN_DURATIONS = { 'monthly': 30, 'yearly': 365, 'lifetime': 36500 }; 
+        const STANDARD_PRICES = { 'monthly': 49, 'yearly': 299, 'lifetime': 799 };
 
         let sessionUser = "User"; 
         let firebaseUid = ""; 
         let currentUserData = { isPremium: false, current_plan: 'free' };
-        let currentActivePlan = null;
         
         let remainingValue = 0; 
         let daysRemaining = 0;
         let basePrice = 0;
         let finalPriceToPay = 0;
         let activeCoupon = null;
+        let currentTxType = "New Purchase"; // NEW: Tracks the exact type of transaction
 
         const params = new URLSearchParams(window.location.search);
         const token = params.get('token');
 
-        if (!token) {
-            window.location.href = '/premium';
-        }
+        if (!token) window.location.href = '/premium';
 
-        // --- DOM ELEMENTS ---
         const planCards = document.querySelectorAll('.plan-card');
         const summaryPlanName = document.getElementById('summaryPlanName');
         const summarySubtotal = document.getElementById('summarySubtotal');
@@ -388,25 +382,20 @@
         const btnPayText = document.getElementById('btnPayText');
         const termsCheck = document.getElementById('termsCheck');
 
-        // --- 1. INITIALIZE APP SESSION ---
         async function verifySession() {
             try {
                 const response = await fetch('/api/initiate-upgrade', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ code: token })
                 });
 
                 const data = await response.json();
-                
                 sessionUser = data.accountName || "User"; 
                 
                 let fetchedUid = data.uid || ""; 
                 if (fetchedUid === "") {
                     const codeSnap = await get(child(ref(db), `generated_codes/${token}`));
-                    if (codeSnap.exists() && codeSnap.val().uid) {
-                        fetchedUid = codeSnap.val().uid;
-                    }
+                    if (codeSnap.exists() && codeSnap.val().uid) fetchedUid = codeSnap.val().uid;
                 }
                 firebaseUid = fetchedUid;
                 
@@ -419,55 +408,43 @@
                 document.getElementById('mainAppUI').style.display = 'block';
 
             } catch (error) {
-                console.error(error);
-                alert("This session is invalid, expired, or has already been used.");
+                alert("Session invalid or expired.");
                 window.location.href = '/premium';
             }
         }
         
-        // --- 2. FIREBASE & PRORATION LOGIC ---
         async function fetchFirebaseDetails(uid) {
-            if (!uid || uid === "") {
-                renderDynamicPlans();
-                return;
-            }
+            if (!uid || uid === "") return renderDynamicPlans();
 
             try {
-                const dbRef = ref(db);
                 const [userSnap, activePlanSnap] = await Promise.all([
-                    get(child(dbRef, `users/${uid}`)),
-                    get(child(dbRef, `Active_plan/${uid}`))
+                    get(child(ref(db), `users/${uid}`)),
+                    get(child(ref(db), `Active_plan/${uid}`))
                 ]);
 
-                if (userSnap.exists()) {
-                    currentUserData = { ...currentUserData, ...userSnap.val() };
-                }
+                if (userSnap.exists()) currentUserData = { ...currentUserData, ...userSnap.val() };
                 
                 const currentPlanText = currentUserData.current_plan || "Free";
                 document.getElementById('displayPlan').textContent = currentPlanText.charAt(0).toUpperCase() + currentPlanText.slice(1);
 
                 if (activePlanSnap.exists() && currentUserData.isPremium) {
-                    currentActivePlan = activePlanSnap.val();
-                    calculateProration(currentActivePlan);
+                    calculateProration(activePlanSnap.val());
                 }
 
                 renderDynamicPlans();
             } catch (error) {
-                console.error("Firebase fetch error:", error);
                 renderDynamicPlans();
             }
         }
 
+        // FIXED PRORATION LOGIC
         function calculateProration(planData) {
             const expiry = new Date(planData.expiry_date);
             const now = new Date();
-            
-            const diffTime = expiry - now;
-            daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            daysRemaining = Math.ceil((expiry - now) / (1000 * 60 * 60 * 24));
 
             if (daysRemaining > 0) {
-                const banner = document.getElementById('expiryBanner');
-                banner.style.display = 'flex';
+                document.getElementById('expiryBanner').style.display = 'flex';
                 
                 if (planData.plan_type.toLowerCase() === 'lifetime') {
                     document.getElementById('expiryText').innerHTML = `Your <strong>Lifetime</strong> plan is active forever.`;
@@ -475,13 +452,14 @@
                     document.getElementById('expiryText').innerHTML = `Your <strong>${planData.plan_type}</strong> plan is active. Expires in <strong>${daysRemaining} days</strong>.`;
                 }
 
+                // Fallback to standard prices if planData.amount is corrupted or missing
+                const safeAmountPaid = parseFloat(planData.amount) || STANDARD_PRICES[planData.plan_type.toLowerCase()] || 0;
                 const totalPlanDays = PLAN_DURATIONS[planData.plan_type.toLowerCase()] || 30;
-                const dailyRate = planData.amount / totalPlanDays;
+                
+                const dailyRate = safeAmountPaid / totalPlanDays;
                 remainingValue = Math.floor(dailyRate * daysRemaining);
             } else {
-                daysRemaining = 0;
-                remainingValue = 0;
-                currentUserData.isPremium = false; 
+                daysRemaining = 0; remainingValue = 0; currentUserData.isPremium = false; 
             }
         }
 
@@ -506,163 +484,87 @@
                     if (cardPlan === 'lifetime') {
                         card.classList.add('active', 'disabled'); 
                         btn.textContent = 'Active Forever';
-                        basePrice = 0; 
-                        finalPriceToPay = 0;
-                        summaryPlanName.textContent = "Lifetime";
-                        summarySubtotal.textContent = `₹0`;
-                        updatePayButton();
-                        defaultSelected = true;
+                        basePrice = 0; finalPriceToPay = 0;
+                        summaryPlanName.textContent = "Lifetime"; summarySubtotal.textContent = `₹0`;
+                        updatePayButton(); defaultSelected = true;
                     } else {
                         card.classList.add('active'); 
                         btn.textContent = 'Top-up (+ ' + PLAN_DURATIONS[cardPlan] + ' days)';
-                        selectPlan(card);
-                        defaultSelected = true;
+                        selectPlan(card); defaultSelected = true;
                     }
                 } 
                 else if (cardRank > currentRank && currentUserData.isPremium && remainingValue > 0) {
                     btn.textContent = 'Upgrade Plan';
                     const proratedPrice = Math.max(0, baseCardPrice - remainingValue);
-                    
                     priceElement.innerHTML = `<span class="original-price">₹${baseCardPrice}</span>₹${proratedPrice}`;
                     card.setAttribute('data-prorated-price', proratedPrice);
                 }
 
                 if (currentRank === 0 && cardPlan === 'free') {
-                    card.classList.add('active');
-                    selectPlan(card);
-                    defaultSelected = true;
+                    card.classList.add('active'); selectPlan(card); defaultSelected = true;
                 }
             });
 
             if (!defaultSelected && currentRank !== 3) {
                 const availableCard = document.querySelector('.plan-card:not(.disabled)');
-                if (availableCard) {
-                    availableCard.classList.add('active');
-                    selectPlan(availableCard);
-                }
+                if (availableCard) { availableCard.classList.add('active'); selectPlan(availableCard); }
             }
         }
 
-        // --- 3. UI INTERACTIONS ---
+        // NEW: Assign transaction type when card is selected
         function selectPlan(card) {
             if (card.classList.contains('disabled')) return;
-            
             planCards.forEach(c => c.classList.remove('active'));
             card.classList.add('active');
 
-            const planName = card.querySelector('.plan-name').textContent;
-            
+            const cardPlan = card.getAttribute('data-plan');
+            const cardRank = PLAN_HIERARCHY[cardPlan];
+            const currentRank = PLAN_HIERARCHY[currentUserData.current_plan.toLowerCase()] || 0;
+
+            // DETERMINE TRANSACTION TYPE
+            if (cardRank === currentRank) currentTxType = "Top-up";
+            else if (cardRank > currentRank && currentUserData.isPremium) currentTxType = "Premium Upgrade";
+            else currentTxType = "New Purchase";
+
             basePrice = parseInt(card.getAttribute('data-prorated-price') || card.getAttribute('data-price'));
             finalPriceToPay = basePrice;
-
-            summaryPlanName.textContent = planName;
+            summaryPlanName.textContent = card.querySelector('.plan-name').textContent;
             summarySubtotal.textContent = `₹${basePrice}`;
             
             if (card.getAttribute('data-prorated-price')) {
-                discountRow.style.display = 'flex';
-                discountRow.style.color = 'var(--text-muted)';
+                discountRow.style.display = 'flex'; discountRow.style.color = 'var(--text-muted)';
                 discountLabelText.textContent = "Upgrade Credit";
                 summaryDiscount.textContent = `(Includes ₹${remainingValue} adjustment)`;
-            } else {
-                discountRow.style.display = 'none';
-            }
+            } else { discountRow.style.display = 'none'; }
             
-            clearPromo();
-            updatePayButton();
+            clearPromo(); updatePayButton();
         }
 
         function clearPromo() {
-            activeCoupon = null;
-            couponInput.value = "";
-            bannerSuccess.style.display = "none";
-            promoContainer.style.display = "flex";
-            finalPriceToPay = basePrice;
+            activeCoupon = null; couponInput.value = ""; bannerSuccess.style.display = "none";
+            promoContainer.style.display = "flex"; finalPriceToPay = basePrice;
             
             const activeCard = document.querySelector('.plan-card.active');
             if (activeCard && activeCard.getAttribute('data-prorated-price')) {
-                discountRow.style.display = 'flex';
-                discountRow.style.color = 'var(--text-muted)';
-                discountLabelText.textContent = "Upgrade Credit";
-                summaryDiscount.textContent = `(Includes ₹${remainingValue} adjustment)`;
-            } else {
-                discountRow.style.display = "none";
-            }
+                discountRow.style.display = 'flex'; discountRow.style.color = 'var(--text-muted)';
+                discountLabelText.textContent = "Upgrade Credit"; summaryDiscount.textContent = `(Includes ₹${remainingValue} adjustment)`;
+            } else { discountRow.style.display = "none"; }
 
-            summaryTotal.textContent = `₹${finalPriceToPay}`;
-            btnPayText.textContent = `Continue to Payment`;
+            summaryTotal.textContent = `₹${finalPriceToPay}`; btnPayText.textContent = `Continue to Payment`;
         }
 
         function updatePayButton() {
             if (basePrice === 0 || !termsCheck.checked) {
-                payBtn.disabled = true;
-                btnPayText.textContent = 'Continue to Payment';
+                payBtn.disabled = true; btnPayText.textContent = 'Continue to Payment';
             } else {
-                payBtn.disabled = false;
-                btnPayText.textContent = `Pay ₹${finalPriceToPay} Securely`;
+                payBtn.disabled = false; btnPayText.textContent = `Pay ₹${finalPriceToPay} Securely`;
             }
         }
 
         planCards.forEach(card => card.addEventListener('click', () => selectPlan(card)));
         termsCheck.addEventListener('change', updatePayButton);
 
-        // --- 4. PROMO CODE VERIFICATION (Updated to use Vercel/Firebase later) ---
-        // Note: Currently still pointing to the old API concept if you haven't moved coupons yet.
-        document.getElementById('applyPromoBtn').addEventListener('click', async () => {
-            const codeInput = couponInput.value.trim();
-            const btn = document.getElementById('applyPromoBtn');
-            
-            if (!codeInput) return alert("Please enter a coupon code");
-            if (basePrice === 0) return alert("Please select a paid plan first.");
-
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
-            btn.disabled = true;
-
-            try {
-                // Update this later once you migrate coupons to Firebase
-                const url = new URL("https://script.google.com/macros/s/AKfycbwZ4WhzyOqa8BBxGUOmmyOejC6I-aYBuWLRNj1bO61r0TE70nq50jBSXYdUXfsNCcsH/exec");
-                url.searchParams.append("api_key", "NEXIFY_SECRET_KEY_987654");
-                url.searchParams.append("action", "verify");
-                url.searchParams.append("couponCode", codeInput);
-                url.searchParams.append("appName", "Dayline");
-                url.searchParams.append("userId", sessionUser);
-                url.searchParams.append("planAmount", basePrice.toString()); 
-
-                const response = await fetch(url);
-                const res = await response.json();
-
-                if (res.status === "success" && res.discountAmount !== undefined) {
-                    const discountAmount = parseInt(res.discountAmount);
-                    finalPriceToPay = parseInt(res.finalPrice);
-                    const originalPrice = parseInt(res.originalPrice);
-
-                    promoContainer.style.display = "none"; 
-                    bannerSuccess.style.display = "flex";  
-                    
-                    document.getElementById('tvSavedAmount').textContent = `You saved ₹${discountAmount}`;
-                    document.getElementById('promoMessageText').textContent = res.message || "Coupon applied successfully!";
-                    
-                    discountRow.style.display = "flex";
-                    discountRow.style.color = 'var(--success)';
-                    discountLabelText.textContent = "Coupon Discount";
-                    
-                    summarySubtotal.textContent = `₹${originalPrice}`;
-                    summaryDiscount.textContent = `- ₹${discountAmount}`;
-                    summaryTotal.textContent = `₹${finalPriceToPay}`;
-                    
-                    activeCoupon = codeInput;
-                    updatePayButton();
-                } else {
-                    alert(res.message || "Invalid coupon code.");
-                }
-            } catch (error) {
-                alert("Failed to verify coupon. Please check your network.");
-            } finally {
-                btn.textContent = 'Apply';
-                btn.disabled = false;
-            }
-        });
-
-        // --- 5. CASHFREE & FIREBASE POST-PAYMENT LOGIC (UPDATED FOR VERCEL) ---
+        // --- CASHFREE CHECKOUT ---
         payBtn.addEventListener('click', async () => {
             if (finalPriceToPay === 0 || !termsCheck.checked) return;
 
@@ -674,15 +576,14 @@
                 const activeCard = document.querySelector('.plan-card.active');
                 const selectedPlanType = activeCard ? activeCard.getAttribute('data-plan') : 'monthly';
 
-                // 1. Call Vercel securely
                 const response = await fetch(CHECKOUT_API_URL, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
+                    method: "POST", headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         action: "create_order",
                         userId: firebaseUid || sessionUser, 
                         planAmount: finalPriceToPay,
                         planType: selectedPlanType,
+                        txType: currentTxType, // PASSING THE TX TYPE TO BACKEND
                         couponCode: activeCoupon,
                         daylineCode: token
                     })
@@ -691,22 +592,17 @@
                 const data = await response.json();
                 if (data.status !== "success") throw new Error(data.message || "Payment failed to initialize.");
 
-                // 2. Launch Cashfree
                 cashfree.checkout({
                     paymentSessionId: data.payment_session_id,
                     redirectTarget: "_modal" 
                 }).then(async (result) => {
-                    
                     if (result.error) {
                         await finalizeUpdates(data.order_id, "FAILED", activeCoupon);
                         alert(result.error.message || "Payment cancelled.");
-                        payBtn.innerHTML = originalBtnHtml;
-                        updatePayButton();
+                        payBtn.innerHTML = originalBtnHtml; updatePayButton();
                     }
-                    
                     if (result.paymentDetails) {
                         payBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Finalizing...';
-                        
                         await finalizeUpdates(data.order_id, "SUCCESS", activeCoupon);
                         await sendSuccessNotification(firebaseUid);
                         
@@ -716,56 +612,42 @@
                         window.location.href = "/success"; 
                     }
                 });
-
             } catch (error) {
                 alert("Error: " + error.message);
-                payBtn.innerHTML = originalBtnHtml;
-                updatePayButton();
+                payBtn.innerHTML = originalBtnHtml; updatePayButton();
             }
         });
 
         async function finalizeUpdates(orderId, status, coupon) {
             try {
                 const activeCard = document.querySelector('.plan-card.active');
-                
                 await fetch(CHECKOUT_API_URL, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
+                    method: "POST", headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         action: "finalize_payment",
                         orderId: orderId,
                         paymentStatus: status,
                         userId: firebaseUid || sessionUser,
                         planType: activeCard ? activeCard.getAttribute('data-plan') : 'monthly',
+                        txType: currentTxType, // PASSING THE TX TYPE
                         amountPaid: finalPriceToPay,
                         couponCode: coupon,
                         daylineCode: token 
                     })
                 });
-                
-            } catch (e) {
-                console.error("Failed to finalize backend updates:", e);
-            }
+            } catch (e) { console.error(e); }
         }
 
         async function sendSuccessNotification(uid) {
             if (!uid || uid === "") return; 
             try {
                 await fetch(VERCEL_FCM_API_URL, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        uid: uid,
-                        title: "Premium Unlocked! 🎉",
-                        body: "Your payment was successful. Enjoy your premium features!"
-                    })
+                    method: "POST", headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ uid: uid, title: "Premium Unlocked! 🎉", body: "Your payment was successful." })
                 });
-            } catch (error) {
-                console.error("FCM trigger failed in background:", error);
-            }
+            } catch (error) {}
         }
 
-        // Initialize Call
         verifySession();
     </script>
 </body>
