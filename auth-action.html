@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dayline Authentication</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #F4F0FA;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            color: #1A1A1A;
+        }
+        .card {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+        h2 { color: #3D2C8D; margin-bottom: 10px; }
+        p { color: #7A7A9D; font-size: 14px; margin-bottom: 24px; line-height: 1.5; }
+        
+        .hidden { display: none; }
+        
+        input {
+            width: 100%;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            border: 1px solid #D1C4E9;
+            border-radius: 12px;
+            box-sizing: border-box;
+            font-size: 16px;
+            outline: none;
+        }
+        input:focus { border-color: #5E42A6; }
+        
+        button {
+            width: 100%;
+            background-color: #5E42A6;
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 28px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover { background-color: #3D2C8D; }
+        
+        #message-box {
+            margin-top: 16px;
+            font-weight: bold;
+        }
+        .success { color: #2E7D32; }
+        .error { color: #C62828; }
+    </style>
+</head>
+<body>
+
+    <div class="card" id="main-card">
+        <!-- Loading UI -->
+        <div id="loading-ui">
+            <h2>Please wait...</h2>
+            <p>Processing your request.</p>
+        </div>
+
+        <!-- Verify Email UI -->
+        <div id="verify-email-ui" class="hidden">
+            <h2>Email Verified! 📧</h2>
+            <p>Your email has been successfully verified. You can now return to the Dayline app and log in.</p>
+        </div>
+
+        <!-- Password Reset UI -->
+        <div id="reset-password-ui" class="hidden">
+            <h2>Reset Password 🔒</h2>
+            <p>Enter your new password below.</p>
+            <input type="password" id="new-password" placeholder="New Password" required>
+            <button id="btn-reset">Update Password</button>
+        </div>
+
+        <!-- Status Messages -->
+        <div id="message-box"></div>
+    </div>
+
+    <!-- Firebase SDK (Modular v10) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getAuth, applyActionCode, confirmPasswordReset } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+
+        // ⚠️ PASTE YOUR FIREBASE WEB CONFIG HERE ⚠️
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_MESSAGING_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        // Get UI Elements
+        const loadingUi = document.getElementById('loading-ui');
+        const verifyUi = document.getElementById('verify-email-ui');
+        const resetUi = document.getElementById('reset-password-ui');
+        const msgBox = document.getElementById('message-box');
+        const btnReset = document.getElementById('btn-reset');
+        const newPasswordInput = document.getElementById('new-password');
+
+        function showMessage(text, isError = false) {
+            msgBox.textContent = text;
+            msgBox.className = isError ? "error" : "success";
+        }
+
+        // Parse the Action Code & Mode from the URL
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const mode = urlParams.get('mode');
+            const actionCode = urlParams.get('oobCode');
+
+            if (!mode || !actionCode) {
+                loadingUi.classList.add('hidden');
+                showMessage("Invalid link. Please request a new email.", true);
+                return;
+            }
+
+            handleAction(mode, actionCode);
+        });
+
+        function handleAction(mode, actionCode) {
+            switch (mode) {
+                case 'resetPassword':
+                    // Show the form to type a new password
+                    loadingUi.classList.add('hidden');
+                    resetUi.classList.remove('hidden');
+
+                    btnReset.addEventListener('click', () => {
+                        const newPassword = newPasswordInput.value;
+                        if(newPassword.length < 6) {
+                            showMessage("Password must be at least 6 characters.", true);
+                            return;
+                        }
+
+                        btnReset.disabled = true;
+                        btnReset.textContent = "Updating...";
+
+                        // Submit new password to Firebase
+                        confirmPasswordReset(auth, actionCode, newPassword).then((resp) => {
+                            resetUi.classList.add('hidden');
+                            showMessage("Success! Your password has been reset. You can now log into the Dayline app.");
+                        }).catch((error) => {
+                            btnReset.disabled = false;
+                            btnReset.textContent = "Update Password";
+                            showMessage(error.message, true);
+                        });
+                    });
+                    break;
+
+                case 'verifyEmail':
+                    // Automatically verify the email in the background
+                    applyActionCode(auth, actionCode).then((resp) => {
+                        loadingUi.classList.add('hidden');
+                        verifyUi.classList.remove('hidden');
+                    }).catch((error) => {
+                        loadingUi.classList.add('hidden');
+                        showMessage(error.message, true);
+                    });
+                    break;
+
+                default:
+                    loadingUi.classList.add('hidden');
+                    showMessage("Invalid request mode.", true);
+            }
+        }
+    </script>
+</body>
+</html>
