@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dayline Account Management</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #F4F0FA; /* Dayline light background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            color: #1A1A1A;
+        }
+        .container {
+            background: #FFFFFF;
+            padding: 40px 30px;
+            border-radius: 20px;
+            box-shadow: 0 4px 20px rgba(74, 59, 140, 0.08);
+            width: 100%;
+            max-width: 380px;
+            text-align: center;
+        }
+        h2 {
+            color: #3D2C8D; /* Dayline deep purple */
+            margin-top: 0;
+            margin-bottom: 8px;
+        }
+        p {
+            color: #7A7A9D;
+            font-size: 14px;
+            line-height: 1.5;
+            margin-bottom: 24px;
+        }
+        .hidden { display: none; }
+        
+        input {
+            width: 100%;
+            padding: 14px 16px;
+            margin-bottom: 16px;
+            border: 1.5px solid #D1C4E9;
+            border-radius: 12px;
+            box-sizing: border-box;
+            font-size: 15px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        input:focus { border-color: #5E42A6; }
+        
+        button {
+            width: 100%;
+            background-color: #5E42A6;
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 28px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover { background-color: #3D2C8D; }
+        button:disabled { background-color: #A594D1; cursor: not-allowed; }
+        
+        .message-box { margin-top: 16px; font-size: 14px; font-weight: 500; }
+        .success { color: #2E7D32; }
+        .error { color: #D32F2F; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- 1. Default Loading View -->
+        <div id="view-loading">
+            <h2>Please wait...</h2>
+            <p>We are securely processing your request.</p>
+        </div>
+
+        <!-- 2. Email Verified View -->
+        <div id="view-verify" class="hidden">
+            <h2>Email Verified! 🌿</h2>
+            <p>Your Dayline account is now fully active. You can close this page and return to the app.</p>
+        </div>
+
+        <!-- 3. Password Reset View -->
+        <div id="view-reset" class="hidden">
+            <h2>Reset Password 🔒</h2>
+            <p>Enter a strong new password for your account.</p>
+            <input type="password" id="input-password" placeholder="New Password" required minlength="6">
+            <button id="btn-submit">Update Password</button>
+        </div>
+
+        <!-- Dynamic Message Box -->
+        <div id="message-box" class="message-box"></div>
+    </div>
+
+    <!-- Firebase SDK (v10 Modular) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getAuth, applyActionCode, confirmPasswordReset } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+
+        // ==========================================
+        // ⚠️ PASTE YOUR FIREBASE WEB CONFIG HERE ⚠️
+        // (Find this in Project Settings > General > Web Apps)
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_MESSAGING_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        // Map UI Elements
+        const viewLoading = document.getElementById('view-loading');
+        const viewVerify = document.getElementById('view-verify');
+        const viewReset = document.getElementById('view-reset');
+        const msgBox = document.getElementById('message-box');
+        const btnSubmit = document.getElementById('btn-submit');
+        const inputPassword = document.getElementById('input-password');
+
+        function showMessage(text, isError = false) {
+            msgBox.textContent = text;
+            msgBox.className = "message-box " + (isError ? "error" : "success");
+        }
+
+        // Run when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            // Firebase adds "?mode=..." and "&oobCode=..." to the URL automatically
+            const urlParams = new URLSearchParams(window.location.search);
+            const mode = urlParams.get('mode');
+            const actionCode = urlParams.get('oobCode');
+
+            if (!mode || !actionCode) {
+                viewLoading.classList.add('hidden');
+                showMessage("Invalid or expired link. Please request a new email from the app.", true);
+                return;
+            }
+
+            // Handle the specific action based on the URL
+            if (mode === 'resetPassword') {
+                viewLoading.classList.add('hidden');
+                viewReset.classList.remove('hidden');
+
+                btnSubmit.addEventListener('click', () => {
+                    const newPassword = inputPassword.value;
+                    if (newPassword.length < 6) {
+                        showMessage("Password must be at least 6 characters long.", true);
+                        return;
+                    }
+
+                    btnSubmit.disabled = true;
+                    btnSubmit.textContent = "Updating...";
+
+                    confirmPasswordReset(auth, actionCode, newPassword)
+                        .then(() => {
+                            viewReset.classList.add('hidden');
+                            showMessage("Success! Your password has been updated. You can now log in.");
+                        })
+                        .catch((error) => {
+                            btnSubmit.disabled = false;
+                            btnSubmit.textContent = "Update Password";
+                            showMessage("Error: " + error.message, true);
+                        });
+                });
+
+            } else if (mode === 'verifyEmail') {
+                applyActionCode(auth, actionCode)
+                    .then(() => {
+                        viewLoading.classList.add('hidden');
+                        viewVerify.classList.remove('hidden');
+                    })
+                    .catch((error) => {
+                        viewLoading.classList.add('hidden');
+                        showMessage("Error verifying email: " + error.message, true);
+                    });
+
+            } else {
+                viewLoading.classList.add('hidden');
+                showMessage("Unknown request mode.", true);
+            }
+        });
+    </script>
+</body>
+</html>
