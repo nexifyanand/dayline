@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Verification - Dayline</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    
+    <!-- Firebase SDK (Compat version for easy HTML integration) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+</head>
+<body class="bg-[#F7F7FB] min-h-screen flex items-center justify-center font-sans text-[#2D2A36] p-4">
+
+    <div class="bg-white max-w-md w-full rounded-2xl shadow-xl border border-[#E8E5EF] overflow-hidden text-center p-8">
+        
+        <!-- Logo Header -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-black tracking-tight text-[#5B4294]">DAYLINE</h1>
+        </div>
+
+        <!-- STATE 1: LOADING -->
+        <div id="state-loading" class="space-y-4 block">
+            <i class="fa-solid fa-circle-notch fa-spin text-4xl text-[#5B4294]"></i>
+            <h2 class="text-lg font-bold">Verifying your request...</h2>
+            <p class="text-sm text-[#777481]">Please wait while we securely process your verification code.</p>
+        </div>
+
+        <!-- STATE 2: SUCCESS -->
+        <div id="state-success" class="space-y-4 hidden">
+            <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-2">
+                <i class="fa-solid fa-check text-3xl"></i>
+            </div>
+            <h2 class="text-xl font-bold text-[#2D2A36]" id="success-title">Verification Complete!</h2>
+            <p class="text-sm text-[#777481]" id="success-msg">Your email address has been successfully verified. You can now return to the Dayline app.</p>
+            <button onclick="window.location.href='https://dayline.nexify.in'" class="mt-4 w-full bg-[#5B4294] hover:bg-[#493477] text-white font-bold py-3 rounded-xl transition-all shadow-md">
+                Continue to Dayline
+            </button>
+        </div>
+
+        <!-- STATE 3: ERROR -->
+        <div id="state-error" class="space-y-4 hidden">
+            <div class="w-16 h-16 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-2">
+                <i class="fa-solid fa-xmark text-3xl"></i>
+            </div>
+            <h2 class="text-xl font-bold text-[#2D2A36]">Verification Failed</h2>
+            <p class="text-sm text-rose-600 font-medium" id="error-msg">The link has expired or is invalid.</p>
+            <p class="text-xs text-[#777481]">If you need help, please contact Dayline Support or request a new link from the app.</p>
+        </div>
+
+    </div>
+
+    <script>
+        // 1. ADD YOUR FIREBASE CONFIG HERE
+        const firebaseConfig = {
+            apiKey: "AIzaSyBOE4ivTCo_-Ap818kPjc6qXzNJ4f202Sk", // Ensure this is your public Web API Key
+            authDomain: "dayline-nexify.firebaseapp.com",
+            projectId: "dayline-nexify"
+        };
+        
+        // Initialize Firebase
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+
+        // Helper to switch UI states
+        function showState(state) {
+            document.getElementById('state-loading').classList.add('hidden');
+            document.getElementById('state-success').classList.add('hidden');
+            document.getElementById('state-error').classList.add('hidden');
+            document.getElementById('state-' + state).classList.remove('hidden');
+        }
+
+        // 2. PROCESS THE URL PARAMETERS
+        document.addEventListener("DOMContentLoaded", () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const mode = urlParams.get('mode');
+            const actionCode = urlParams.get('oobCode');
+
+            if (!actionCode) {
+                document.getElementById('error-msg').innerText = "No verification code found in the URL.";
+                showState('error');
+                return;
+            }
+
+            // 3. APPLY THE FIREBASE ACTION
+            firebase.auth().applyActionCode(actionCode)
+                .then(() => {
+                    // Success!
+                    if (mode === 'resetPassword') {
+                        document.getElementById('success-title').innerText = "Action Authorized";
+                        document.getElementById('success-msg').innerText = "Your request was authorized successfully. Please return to the app.";
+                    } else {
+                        document.getElementById('success-title').innerText = "Email Verified!";
+                        document.getElementById('success-msg').innerText = "Your email address has been successfully verified.";
+                    }
+                    showState('success');
+                })
+                .catch((error) => {
+                    // Error (Expired, already used, or invalid)
+                    let errorText = error.message;
+                    if (error.code === 'auth/expired-action-code') errorText = "This verification link has expired.";
+                    if (error.code === 'auth/invalid-action-code') errorText = "This link has already been used or is invalid.";
+                    
+                    document.getElementById('error-msg').innerText = errorText;
+                    showState('error');
+                });
+        });
+    </script>
+</body>
+</html>
