@@ -28,123 +28,137 @@
 <body>
     <div class="spinner" id="loadingSpinner"></div>
     <div class="icon-box" id="statusIcon"></div>
-    <h2 id="statusText">Initiating Secure Payment...</h2>
+    <h2 id="statusText">Securely Fetching Order...</h2>
     <p id="subText">Please do not close this window or press back.</p>
 
-   <script>
-    const cashfree = Cashfree({ mode: "sandbox" }); 
-    const CHECKOUT_API_URL = "/api/checkout"; // Ensure this matches your Vercel route!
+    <!-- MUST be type="module" to use Firebase -->
+    <script type="module">
+        // 1. IMPORT FIREBASE V10 SDK
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getDatabase, ref, get, child } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
-    // 1. EXTRACT ALL VARIABLES FROM URL (Fixes the undefined crash)
-    const params = new URLSearchParams(window.location.search);
-    const orderId = params.get('order_id') || "";
-    const uid = params.get('uid') || "";
-    const planAmountStr = params.get('planAmount') || "0";
-    const finalAmountStr = params.get('finalAmount') || "0";
-    const discountAmountStr = params.get('discountAmount') || "0";
-    const planStr = params.get('plan') || "Unknown";
-    const txTypeStr = params.get('txType') || "New Purchase";
-    const couponStr = params.get('couponCode') || "";
-    const daylineCodeStr = params.get('daylineCode') || "UNKNOWN_CODE";
+        // Your exact Firebase config
+        const firebaseConfig = {
+            apiKey: "AIzaSyBOE4ivTCo_-Ap818kPjc6qXzNJ4f202Sk",
+            databaseURL: "https://dayline-nexify-default-rtdb.firebaseio.com",
+            projectId: "dayline-nexify"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
 
-    // Helper functions for UI (replaces freezing alerts)
-    function triggerRedirect(status, message) {
-        document.getElementById('loadingSpinner').style.display = 'none';
-        const icon = document.getElementById('statusIcon');
-        const title = document.getElementById('statusText');
-        const sub = document.getElementById('subText');
-        
-        icon.style.display = 'block';
-        if (status === "SUCCESS") {
-            icon.innerHTML = '✅';
-            title.innerHTML = 'Payment Successful!';
-            title.className = 'success-text';
-            sub.innerText = "Redirecting to app...";
-            setTimeout(() => { window.location.href = "/success"; }, 1500);
-        } else {
-            icon.innerHTML = '❌';
-            title.innerHTML = 'Payment Failed';
-            title.className = 'error-text';
-            sub.innerText = message + "\nReturning to checkout...";
-            setTimeout(() => { window.location.href = "/failed"; }, 2000);
-        }
-    }
+        const cashfree = Cashfree({ mode: "sandbox" }); 
+        const CHECKOUT_API_URL = "/api/checkout"; 
 
-    async function startPayment() {
-        if (!orderId || !uid) {
-            triggerRedirect("FAILED", "Invalid Request. Missing ID.");
-            return;
-        }
+        // 2. EXTRACT ONLY THE ORDER ID FROM URL
+        const params = new URLSearchParams(window.location.search);
+        const orderId = params.get('order_id');
 
-        try {
-            // 2. CREATE ORDER
-            const response = await fetch(CHECKOUT_API_URL, {
-                method: "POST", headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    action: "create_order",
-                    orderId: orderId,
-                    userId: uid, 
-                    planAmount: planAmountStr, 
-                    finalAmount: finalAmountStr, 
-                    discountAmount: discountAmountStr, 
-                    planType: planStr,
-                    txType: txTypeStr, 
-                    couponCode: couponStr,
-                    daylineCode: daylineCodeStr
-                })
-            });
-
-            const data = await response.json();
-            if (data.status !== "success") throw new Error(data.message || "Failed to secure session");
-
-            document.getElementById('statusText').innerText = "Awaiting Payment...";
+        // UI HELPER: Replaces freezing Javascript Alerts with smooth UI animations
+        function triggerRedirect(status, message) {
+            document.getElementById('loadingSpinner').style.display = 'none';
+            const icon = document.getElementById('statusIcon');
+            const title = document.getElementById('statusText');
+            const sub = document.getElementById('subText');
             
-            // 3. LAUNCH CASHFREE
-            cashfree.checkout({
-                paymentSessionId: data.payment_session_id,
-                redirectTarget: "_modal"
-            }).then(async (result) => {
-                document.getElementById('statusText').innerText = "Verifying Transaction...";
+            icon.style.display = 'block';
+            if (status === "SUCCESS") {
+                icon.innerHTML = '✅';
+                title.innerHTML = 'Payment Successful!';
+                title.className = 'success-text';
+                sub.innerText = "Redirecting to app...";
+                setTimeout(() => { window.location.href = "/success"; }, 1500); // Triggers Sketchware to close
+            } else {
+                icon.innerHTML = '❌';
+                title.innerHTML = 'Payment Failed';
+                title.className = 'error-text';
+                sub.innerText = message + "\nReturning to checkout...";
+                setTimeout(() => { window.location.href = "/failed"; }, 2500); // Triggers Sketchware to close
+            }
+        }
+
+        async function startPayment() {
+            if (!orderId) {
+                triggerRedirect("FAILED", "Invalid Request. Missing Order ID.");
+                return;
+            }
+
+            try {
+                // 3. SECURELY FETCH ORDER DETAILS FROM FIREBASE DB
+                const dbRef = ref(db);
+                const orderSnap = await get(child(dbRef, `Pending_Orders/${orderId}`));
                 
-                let remarks = "";
-                let finalStatus = "";
-
-                if (result.error) {
-                    finalStatus = "FAILED";
-                    remarks = result.error.message || "User cancelled or payment failed at gateway.";
-                } else if (result.paymentDetails) {
-                    finalStatus = "SUCCESS";
-                    remarks = "Payment processed successfully.";
+                if (!orderSnap.exists()) {
+                    throw new Error("Order details not found in database.");
                 }
+                
+                const orderData = orderSnap.val();
+                document.getElementById('statusText').innerText = "Initiating Gateway...";
 
-                // 4. FINALIZE PAYMENT
-                const verifyResponse = await fetch(CHECKOUT_API_URL, {
+                // 4. SEND EXTRACTED DATA TO YOUR EXISTING BACKEND
+                const response = await fetch(CHECKOUT_API_URL, {
                     method: "POST", headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ 
-                        action: "finalize_payment",
+                    body: JSON.stringify({
+                        action: "create_order",
                         orderId: orderId,
-                        userId: uid,
-                        planType: planStr,
-                        txType: txTypeStr,
-                        amountPaid: finalAmountStr,
-                        paymentStatus: finalStatus,
-                        frontendRemarks: remarks,
-                        daylineCode: daylineCodeStr
+                        userId: orderData.uid, 
+                        planAmount: orderData.base_price, 
+                        finalAmount: orderData.final_price, 
+                        discountAmount: orderData.discount_value || "0", 
+                        planType: orderData.plan,
+                        txType: orderData.paymentType || "New Purchase", 
+                        couponCode: orderData.coupon_code || ""
                     })
                 });
 
-                const verifyData = await verifyResponse.json();
+                const data = await response.json();
+                if (data.status !== "success") throw new Error(data.message || "Failed to secure session");
 
-                // 5. REDIRECT BACK TO APP
-                triggerRedirect(finalStatus, remarks);
-            });
+                document.getElementById('statusText').innerText = "Awaiting Payment...";
+                
+                // 5. LAUNCH CASHFREE
+                cashfree.checkout({
+                    paymentSessionId: data.payment_session_id,
+                    redirectTarget: "_modal"
+                }).then(async (result) => {
+                    document.getElementById('statusText').innerText = "Verifying Transaction...";
+                    
+                    let remarks = "";
+                    let finalStatus = "";
 
-        } catch (error) {
-            triggerRedirect("FAILED", error.message);
+                    if (result.error) {
+                        finalStatus = "FAILED";
+                        remarks = result.error.message || "User cancelled or payment failed at gateway.";
+                    } else if (result.paymentDetails) {
+                        finalStatus = "SUCCESS";
+                        remarks = "Payment processed successfully.";
+                    }
+
+                    // 6. FINALIZE PAYMENT VIA YOUR EXISTING BACKEND
+                    await fetch(CHECKOUT_API_URL, {
+                        method: "POST", headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ 
+                            action: "finalize_payment",
+                            orderId: orderId,
+                            userId: orderData.uid,
+                            planType: orderData.plan,
+                            txType: orderData.paymentType || "New Purchase",
+                            amountPaid: orderData.final_price,
+                            paymentStatus: finalStatus,
+                            frontendRemarks: remarks
+                        })
+                    });
+
+                    // 7. REDIRECT BACK TO APP
+                    triggerRedirect(finalStatus, remarks);
+                });
+
+            } catch (error) {
+                triggerRedirect("FAILED", error.message);
+            }
         }
-    }
 
-    startPayment();
-</script>
+        // Start process automatically
+        startPayment();
+    </script>
 </body>
 </html>
