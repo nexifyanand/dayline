@@ -16,49 +16,100 @@
             border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 20px;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        h2 { margin: 0 0 8px 0; font-size: 18px; }
-        p { margin: 0; color: #666677; font-size: 13px; text-align: center; padding: 0 20px;}
+        
+        .icon-box {
+            font-size: 48px; margin-bottom: 16px; display: none;
+        }
+        h2 { margin: 0 0 8px 0; font-size: 18px; text-align: center; }
+        p { margin: 0; color: #666677; font-size: 13px; text-align: center; padding: 0 20px; line-height: 1.5; }
+        
+        .success-text { color: #00C853; }
+        .error-text { color: #D32F2F; }
     </style>
 </head>
 <body>
-    <div class="spinner"></div>
+    <div class="spinner" id="loadingSpinner"></div>
+    <div class="icon-box" id="statusIcon"></div>
     <h2 id="statusText">Initiating Secure Payment...</h2>
-    <p>Please do not close this window or press back.</p>
+    <p id="subText">Please do not close this window or press back.</p>
 
    <script>
-    const cashfree = Cashfree({ mode: "sandbox" }); 
+    const cashfree = Cashfree({ mode: "sandbox" }); // Change to "production" for live
+    const CHECKOUT_API_URL = "/api/checkout"; // Ensure this matches your Vercel routing
+    
+    // 1. Properly extract ALL variables sent from Sketchware
     const params = new URLSearchParams(window.location.search);
     const orderId = params.get('order_id');
+    const uid = params.get('uid');
+    const planAmountStr = params.get('planAmount') || "0";
+    const finalAmountStr = params.get('finalAmount') || "0";
+    const discountAmountStr = params.get('discountAmount') || "0";
+    const planStr = params.get('plan') || "Unknown";
+    const txTypeStr = params.get('txType') || "New Purchase";
+    const couponStr = params.get('couponCode') || "";
+
+    // UI Helper Functions
+    function showSuccess(message) {
+        document.getElementById('loadingSpinner').style.display = 'none';
+        const icon = document.getElementById('statusIcon');
+        icon.style.display = 'block';
+        icon.innerHTML = '✅';
+        
+        const title = document.getElementById('statusText');
+        title.innerHTML = 'Payment Successful!';
+        title.className = 'success-text';
+        
+        document.getElementById('subText').innerText = message + "\nRedirecting to app...";
+        
+        // Wait 2 seconds so user can read it, then close WebView
+        setTimeout(() => { window.location.href = "/success"; }, 2000);
+    }
+
+    function showFailed(message) {
+        document.getElementById('loadingSpinner').style.display = 'none';
+        const icon = document.getElementById('statusIcon');
+        icon.style.display = 'block';
+        icon.innerHTML = '❌';
+        
+        const title = document.getElementById('statusText');
+        title.innerHTML = 'Payment Failed';
+        title.className = 'error-text';
+        
+        document.getElementById('subText').innerText = message + "\nReturning to checkout...";
+        
+        // Wait 2.5 seconds so user can read the error, then close WebView
+        setTimeout(() => { window.location.href = "/failed"; }, 2500);
+    }
 
     async function startPayment() {
-        if (!orderId) {
-            document.getElementById('statusText').innerText = "Invalid Payment Request";
+        if (!orderId || !uid) {
+            showFailed("Invalid Payment Request. Missing Order ID or User ID.");
             return;
         }
 
         try {
-            // 1. Initiate Order via backend
-          // Inside process_payment.html
-const response = await fetch(CHECKOUT_API_URL, {
-    method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-        action: "create_order",
-        userId: uid, 
-        planAmount: planAmountFromUrl, // e.g., 589
-        finalAmount: finalAmountFromUrl, // e.g., 569
-        discountAmount: discountFromUrl, // e.g., 20
-        planType: plan,
-        txType: paymentTypeFromUrl, // "Top-up" or "New Purchase"
-        couponCode: coupon
-    })
-});
+            // 2. Send extracted data to your Vercel backend (checkout_2.js)
+            const response = await fetch(CHECKOUT_API_URL, {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    action: "create_order",
+                    orderId: orderId,
+                    userId: uid, 
+                    planAmount: planAmountStr, 
+                    finalAmount: finalAmountStr, 
+                    discountAmount: discountAmountStr, 
+                    planType: planStr,
+                    txType: txTypeStr, 
+                    couponCode: couponStr
+                })
+            });
 
             const data = await response.json();
-            if (data.status !== "success") throw new Error(data.message);
+            if (data.status !== "success") throw new Error(data.message || "Failed to secure session");
 
             document.getElementById('statusText').innerText = "Awaiting Payment...";
             
-            // 2. Launch Cashfree
+            // 3. Launch Cashfree Modal
             cashfree.checkout({
                 paymentSessionId: data.payment_session_id,
                 redirectTarget: "_modal"
@@ -69,38 +120,43 @@ const response = await fetch(CHECKOUT_API_URL, {
                 let finalStatus = "";
 
                 if (result.error) {
-                    // Capture exact reason it failed or if user closed the modal
                     finalStatus = "FAILED";
                     remarks = result.error.message || "User cancelled or payment failed at gateway.";
                 } else if (result.paymentDetails) {
-                    // Capture success info
                     finalStatus = "SUCCESS";
                     remarks = result.paymentDetails.paymentMessage || "Payment processed successfully.";
                 }
 
-                // 3. Send Status AND Remarks to backend
-                const verifyResponse = await fetch("/api/checkout/verify", {
+                // 4. Verify with Backend
+                const verifyResponse = await fetch(CHECKOUT_API_URL, {
                     method: "POST", headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ 
-                        order_id: orderId,
-                        cashfree_status: finalStatus,
-                        payment_remarks: remarks
+                        action: "finalize_payment",
+                        orderId: orderId,
+                        userId: uid,
+                        planType: planStr,
+                        txType: txTypeStr,
+                        amountPaid: finalAmountStr,
+                        frontendRemarks: remarks
                     })
                 });
 
-                if (finalStatus === "FAILED") {
-                    window.location.href = "/failed"; 
+                const verifyData = await verifyResponse.json();
+
+                // 5. Trigger the appropriate visual UI
+                if (finalStatus === "FAILED" || verifyData.payment_status === "FAILED") {
+                    showFailed(remarks);
                 } else {
-                    window.location.href = "/success"; 
+                    showSuccess(remarks);
                 }
             });
 
         } catch (error) {
-            alert("Error initializing payment: " + error.message);
-            window.location.href = "/failed";
+            showFailed(error.message);
         }
     }
 
+    // Start process automatically
     startPayment();
 </script>
 </body>
