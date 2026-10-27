@@ -38,10 +38,20 @@
 
         try {
             // 1. Initiate Order via backend
-            const response = await fetch("/api/checkout/initiate", {
-                method: "POST", headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ order_id: orderId })
-            });
+          // Inside process_payment.html
+const response = await fetch(CHECKOUT_API_URL, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+        action: "create_order",
+        userId: uid, 
+        planAmount: planAmountFromUrl, // e.g., 589
+        finalAmount: finalAmountFromUrl, // e.g., 569
+        discountAmount: discountFromUrl, // e.g., 20
+        planType: plan,
+        txType: paymentTypeFromUrl, // "Top-up" or "New Purchase"
+        couponCode: coupon
+    })
+});
 
             const data = await response.json();
             if (data.status !== "success") throw new Error(data.message);
