@@ -2,31 +2,29 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Dayline - Secure Checkout</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
     <style>
         :root {
             --primary: #5B4294;
-            --primary-light: #f4f1fa;
+            --primary-light: #F8F5FF;
             --primary-hover: #4a3578;
-            --text-dark: #1a1a2e;
-            --text-muted: #6b6b83;
-            --bg-body: #fbfcff;
-            --border-color: #e9e4f5;
-            --card-shadow: 0 4px 20px rgba(91, 66, 148, 0.05);
-            --success: #10b981;
-            --success-light: #d1fae5;
+            --text-dark: #1C1B33;
+            --text-muted: #666677;
+            --bg-body: #F4F4F8;
+            --border-color: #EEEEEE;
+            --success: #00C853;
+            --success-light: #E8F5E9;
         }
 
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background-color: var(--bg-body);
             color: var(--text-dark);
-            margin: 0;
-            padding: 0;
-            line-height: 1.5;
+            margin: 0; padding: 0;
+            -webkit-tap-highlight-color: transparent;
         }
 
         /* --- SECURITY LOADER --- */
@@ -34,126 +32,76 @@
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-body);
             display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999;
         }
-        #securityLoader i { font-size: 40px; color: var(--primary); margin-bottom: 20px; }
-        #securityLoader h2 { margin: 0 0 10px 0; color: var(--text-dark); }
-        #securityLoader p { margin: 0; color: var(--text-muted); font-size: 14px; }
+        #securityLoader i { font-size: 32px; color: var(--primary); margin-bottom: 16px; }
+        #securityLoader h2 { margin: 0 0 8px 0; font-size: 18px; color: var(--text-dark); }
+        #securityLoader p { margin: 0; color: var(--text-muted); font-size: 13px; }
         
         #mainAppUI { display: none; }
+        .container { padding: 16px; padding-bottom: 100px; }
 
-        .container { max-width: 1000px; margin: 0 auto; padding: 0 20px 60px 20px; }
+        /* Web-only elements hidden in app */
+        .web-header, .web-footer { display: block; }
+        body.app-mode .web-header, body.app-mode .web-footer { display: none; }
+        body.app-mode .container { padding: 16px 16px 120px 16px; }
 
-        /* Header */
-        header { padding: 24px 0; border-bottom: 1px solid var(--border-color); margin-bottom: 30px; }
-        .logo { font-size: 24px; font-weight: bold; color: var(--text-dark); display: flex; align-items: center; gap: 8px; }
-        .logo i { color: var(--primary); }
+        .web-header { padding: 20px; border-bottom: 1px solid var(--border-color); background: white; margin-bottom: 20px; }
+        .logo { font-size: 20px; font-weight: bold; color: var(--primary); }
 
-        /* User Info Bar */
-        .user-info-bar { background: white; border: 1px solid var(--border-color); border-radius: 12px; padding: 20px 30px; display: flex; justify-content: space-between; margin-bottom: 20px; box-shadow: var(--card-shadow); }
-        .info-group { display: flex; flex-direction: column; gap: 4px; }
-        .info-label { font-size: 12px; color: var(--text-muted); }
+        /* Current Plan Banner */
+        .user-info-bar { background: white; border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
+        .info-row { display: flex; justify-content: space-between; align-items: center; }
+        .info-label { font-size: 13px; color: var(--text-muted); }
         .info-value { font-size: 14px; font-weight: 600; color: var(--text-dark); }
-        .badge-plan { background: var(--primary-light); color: var(--primary); padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; border: 1px solid #dcd3ef; text-transform: capitalize; display: inline-block; }
+        .badge-plan { background: var(--primary-light); color: var(--primary); padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 700; text-transform: capitalize; }
 
-        /* --- NEW DYNAMIC UI STYLES --- */
-        .expiry-banner {
-            background: #f0fdf4;
-            border: 1px solid #bbf7d0;
-            color: #166534;
-            padding: 12px 20px;
-            border-radius: 12px;
-            margin-bottom: 35px;
-            display: none; /* Hidden by default */
-            align-items: center;
-            gap: 10px;
-            font-size: 14px;
-            font-weight: 500;
-        }
-        .expiry-banner i { color: #22c55e; font-size: 18px; }
-
-        .plan-card.disabled {
-            opacity: 0.5;
-            pointer-events: none;
-            background: #f8f9fa;
-            border-color: var(--border-color);
-        }
-        .plan-card.disabled .btn-select {
-            background: #e2e8f0;
-            color: #64748b;
-            border: none;
-        }
+        .expiry-banner { background: var(--success-light); color: #2E7D32; padding: 12px 16px; border-radius: 12px; margin-bottom: 24px; display: none; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; }
         
-        .original-price {
-            text-decoration: line-through;
-            color: var(--text-muted);
-            font-size: 16px;
-            margin-right: 8px;
-        }
-        /* ----------------------------- */
+        .pricing-header h1 { font-size: 20px; margin: 0 0 4px 0; }
+        .pricing-header p { font-size: 13px; color: var(--text-muted); margin: 0 0 20px 0; }
 
-        .pricing-header { text-align: center; margin-bottom: 40px; }
-        .pricing-header h1 { font-size: 32px; margin: 0 0 10px 0; }
-        .pricing-header p { color: var(--text-muted); margin: 0 0 15px 0; }
-        .secure-badge { font-size: 13px; color: var(--primary); display: inline-flex; align-items: center; gap: 6px; }
-
-        /* Pricing Cards */
-        .pricing-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 25px; }
-        .plan-card { background: white; border: 1px solid var(--border-color); border-radius: 16px; padding: 25px 20px; position: relative; display: flex; flex-direction: column; cursor: pointer; transition: all 0.2s ease; }
-        .plan-card:hover:not(.disabled) { border-color: var(--primary); box-shadow: var(--card-shadow); }
-        .plan-card.active { border: 2px solid var(--primary); background: #faf8ff; }
-        .radio-btn { width: 18px; height: 18px; border: 2px solid #ccc; border-radius: 50%; position: absolute; top: 20px; left: 20px; }
-        .plan-card.active .radio-btn { border-color: var(--primary); border-width: 5px; }
-        .best-value-badge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: var(--primary); color: white; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; white-space: nowrap; }
-
-        .plan-icon { font-size: 24px; color: var(--primary); margin: 20px 0 15px 0; text-align: center; }
-        .plan-name { text-align: center; font-weight: 600; margin-bottom: 5px; }
-        .plan-price { text-align: center; font-size: 32px; font-weight: bold; margin-bottom: 5px; }
-        .plan-duration { text-align: center; font-size: 12px; color: var(--text-muted); margin-bottom: 20px; }
-        .plan-features { flex: 1; list-style: none; padding: 0; margin: 0 0 20px 0; }
-        .plan-features li { font-size: 12px; color: var(--text-dark); margin-bottom: 12px; display: flex; align-items: flex-start; gap: 8px; }
-        .plan-features li i { color: var(--primary); margin-top: 2px; }
-
-        .btn-select { width: 100%; padding: 10px; border-radius: 8px; font-size: 14px; font-weight: 600; background: white; border: 1px solid var(--primary); color: var(--primary); cursor: pointer; }
-        .plan-card.active .btn-select { background: var(--primary-light); border: none; }
-        .plan-card.active[data-plan="monthly"] .btn-select, .plan-card.active[data-plan="yearly"] .btn-select, .plan-card.active[data-plan="lifetime"] .btn-select { background: var(--primary); color: white; }
-
-        /* Payment Summary & Promo Code */
-        .summary-box { background: white; border: 1px solid var(--border-color); border-radius: 16px; padding: 30px; margin-bottom: 30px; box-shadow: var(--card-shadow); }
-        .summary-header { font-size: 18px; font-weight: 600; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
-        .summary-row { display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 14px; color: var(--text-muted); }
-        .summary-row.total { font-size: 18px; font-weight: bold; color: var(--text-dark); border-top: 1px solid var(--border-color); padding-top: 15px; margin-top: 15px; }
+        /* Native App Style Cards */
+        .pricing-grid { display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px; }
+        .plan-card { background: white; border: 2px solid transparent; border-radius: 16px; padding: 20px; display: flex; flex-direction: column; transition: 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
+        .plan-card.active { border-color: var(--primary); background: var(--primary-light); }
+        .plan-card.disabled { opacity: 0.5; pointer-events: none; }
         
-        .promo-box { display: flex; gap: 10px; margin-bottom: 15px; border: 1px solid var(--border-color); border-radius: 8px; padding: 5px; }
-        .promo-box input { flex: 1; border: none; outline: none; padding: 10px; font-size: 14px; background: transparent; }
-        .promo-box button { background: var(--primary-light); color: var(--primary); border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; transition: 0.2s; }
-        .promo-box button:hover { background: #e0d7f5; }
-        .promo-box button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .plan-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .plan-title-group { display: flex; align-items: center; gap: 12px; }
+        .plan-icon { width: 36px; height: 36px; background: #EFEAF5; border-radius: 18px; display: flex; align-items: center; justify-content: center; color: var(--primary); }
+        .plan-name { font-weight: bold; font-size: 16px; }
+        .plan-price { font-size: 18px; font-weight: bold; color: var(--primary); text-align: right; }
+        .plan-duration { font-size: 11px; color: var(--text-muted); text-align: right; }
+        
+        .best-value-badge { background: var(--primary); color: white; padding: 2px 8px; border-radius: 8px; font-size: 10px; font-weight: bold; margin-left: 8px; }
+        
+        .plan-features { list-style: none; padding: 0; margin: 12px 0 0 0; border-top: 1px solid var(--border-color); padding-top: 12px; }
+        .plan-features li { font-size: 13px; color: var(--text-muted); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+        .plan-features li i { color: var(--primary); }
 
-        .banner-coupon-success { display: none; background: var(--success-light); color: #065f46; border: 1px solid #34d399; border-radius: 8px; padding: 12px; margin-bottom: 20px; font-size: 13px; align-items: center; justify-content: space-between; }
-        .banner-coupon-success i { color: var(--success); font-size: 16px; margin-right: 6px; }
+        /* Summary & Promo */
+        .summary-box { background: white; border-radius: 16px; padding: 20px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
+        .summary-header { font-size: 16px; font-weight: bold; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        .summary-row { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14px; color: var(--text-muted); }
+        .summary-row.total { font-size: 18px; font-weight: bold; color: var(--text-dark); border-top: 1px solid var(--border-color); padding-top: 12px; margin-top: 12px; }
+        
+        .promo-box { display: flex; gap: 12px; margin-bottom: 20px; background: #F8F8FA; border-radius: 12px; padding: 4px; }
+        .promo-box input { flex: 1; border: none; background: transparent; padding: 12px; font-size: 14px; outline: none; text-transform: uppercase; }
+        .promo-box button { background: var(--primary); color: white; border: none; padding: 0 20px; border-radius: 10px; font-weight: bold; cursor: pointer; }
+        .promo-box button:disabled { opacity: 0.5; }
 
-        .terms-check { display: flex; gap: 10px; font-size: 13px; color: var(--text-muted); margin-bottom: 20px; align-items: center; }
-        .terms-check input { width: 16px; height: 16px; accent-color: var(--primary); cursor: pointer; }
-        .terms-check a { color: var(--primary); text-decoration: none; }
+        .banner-coupon-success { display: none; background: var(--success-light); border-radius: 12px; padding: 12px; margin-bottom: 16px; font-size: 13px; align-items: center; justify-content: space-between; }
+        
+        .terms-check { display: flex; gap: 10px; font-size: 12px; color: var(--text-muted); margin-bottom: 20px; align-items: flex-start; }
+        .terms-check input { margin-top: 2px; }
+        .terms-check a { color: var(--primary); text-decoration: none; font-weight: 600; }
 
-        .btn-pay { width: 100%; padding: 16px; background: var(--primary); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: background 0.2s; }
-        .btn-pay:hover:not(:disabled) { background: var(--primary-hover); }
-        .btn-pay:disabled { opacity: 0.7; cursor: not-allowed; }
-        .secure-footer { text-align: center; font-size: 12px; color: var(--text-muted); margin-top: 15px; }
+        /* Fixed Bottom Payment Bar */
+        .bottom-pay-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: white; padding: 16px 20px; box-shadow: 0 -4px 16px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 12px; box-sizing: border-box; z-index: 100; }
+        .btn-pay { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 24px; font-size: 15px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn-pay:disabled { opacity: 0.5; }
+        .secure-footer { text-align: center; font-size: 11px; color: var(--text-muted); }
 
-        /* Footer */
-        footer { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-muted); border-top: 1px solid var(--border-color); padding-top: 20px; margin-top: 40px; }
-        .footer-links { display: flex; gap: 20px; }
-        .footer-links a { color: var(--text-muted); text-decoration: none; transition: color 0.2s; }
-        .footer-links a:hover { color: var(--primary); }
-
-        @media (max-width: 900px) {
-            .pricing-grid { grid-template-columns: repeat(2, 1fr); }
-            .user-info-bar { flex-direction: column; gap: 15px; }
-        }
-        @media (max-width: 600px) {
-            .pricing-grid { grid-template-columns: 1fr; }
-            footer { flex-direction: column; gap: 15px; align-items: center; }
-        }
+        .web-footer { text-align: center; font-size: 12px; padding: 20px; color: var(--text-muted); }
     </style>
 </head>
 <body>
@@ -165,98 +113,98 @@
     </div>
 
     <div id="mainAppUI">
-        <header>
-            <div class="container">
-                <div class="logo">
-                    <i class="fa-solid fa-leaf"></i> Dayline<i class="fa-solid fa-heart" style="font-size: 12px; margin-left: -4px;"></i>
-                </div>
-            </div>
+        <header class="web-header">
+            <div class="logo"><i class="fa-solid fa-leaf"></i> Dayline</div>
         </header>
 
         <div class="container">
             <div class="user-info-bar">
-                <div class="info-group">
-                    <span class="info-label">Dayline Code</span>
+                <div class="info-row">
+                    <span class="info-label">Account Code</span>
                     <span class="info-value" id="displayCode">...</span>
                 </div>
-                <div class="info-group">
-                    <span class="info-label">User Account</span>
-                    <span class="info-value" id="displayUser">...</span>
-                </div>
-                <div class="info-group">
+                <div class="info-row">
                     <span class="info-label">Current Plan</span>
-                    <div><span class="badge-plan" id="displayPlan">...</span></div>
+                    <span class="badge-plan" id="displayPlan">...</span>
                 </div>
             </div>
 
-            <!-- NEW EXPIRY BANNER -->
             <div class="expiry-banner" id="expiryBanner">
-                <i class="fa-solid fa-clock-rotate-left"></i>
-                <span id="expiryText">Your current premium plan is active.</span>
+                <i class="fa-solid fa-check-circle"></i>
+                <span id="expiryText">Your current plan is active.</span>
             </div>
 
             <div class="pricing-header">
-                <h1>Choose your premium plan</h1>
+                <h1>Choose your plan</h1>
                 <p>Unlock unlimited access to all premium features.</p>
-                <div class="secure-badge"><i class="fa-solid fa-shield-check"></i> One-time payment. No auto renewal.</div>
             </div>
 
             <div class="pricing-grid">
                 <!-- Free Plan -->
                 <div class="plan-card" data-plan="free" data-price="0">
-                    <div class="radio-btn"></div>
-                    <div class="plan-icon"><i class="fa-solid fa-gift"></i></div>
-                    <div class="plan-name">Free</div>
-                    <div class="plan-price">₹0</div>
-                    <div class="plan-duration">Forever</div>
-                    <ul class="plan-features">
-                        <li><i class="fa-regular fa-circle-check"></i> Daily journaling</li>
-                        <li><i class="fa-regular fa-circle-check"></i> Mood tracking</li>
-                    </ul>
-                    <button class="btn-select">Current Plan</button>
+                    <div class="plan-header-row">
+                        <div class="plan-title-group">
+                            <div class="plan-icon"><i class="fa-solid fa-gift"></i></div>
+                            <div class="plan-name">Free</div>
+                        </div>
+                        <div>
+                            <div class="plan-price">₹0</div>
+                            <div class="plan-duration">Forever</div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Monthly Plan -->
                 <div class="plan-card" data-plan="monthly" data-price="49">
-                    <div class="radio-btn"></div>
-                    <div class="plan-icon"><i class="fa-regular fa-calendar"></i></div>
-                    <div class="plan-name">Monthly</div>
-                    <div class="plan-price">₹49</div>
-                    <div class="plan-duration">Full access for 30 days</div>
+                    <div class="plan-header-row">
+                        <div class="plan-title-group">
+                            <div class="plan-icon"><i class="fa-regular fa-calendar"></i></div>
+                            <div class="plan-name">Monthly</div>
+                        </div>
+                        <div>
+                            <div class="plan-price">₹49</div>
+                            <div class="plan-duration">For 30 days</div>
+                        </div>
+                    </div>
                     <ul class="plan-features">
-                        <li><i class="fa-solid fa-circle-check"></i> All premium features</li>
-                        <li><i class="fa-solid fa-circle-check"></i> Cloud backup & sync</li>
+                        <li><i class="fa-solid fa-check-circle"></i> All premium features</li>
+                        <li><i class="fa-solid fa-check-circle"></i> Cloud backup & sync</li>
                     </ul>
-                    <button class="btn-select">Select Plan</button>
                 </div>
 
                 <!-- Yearly Plan -->
                 <div class="plan-card" data-plan="yearly" data-price="299">
-                    <div class="best-value-badge">Best Value</div>
-                    <div class="radio-btn"></div>
-                    <div class="plan-icon"><i class="fa-solid fa-crown"></i></div>
-                    <div class="plan-name">Yearly</div>
-                    <div class="plan-price">₹299</div>
-                    <div class="plan-duration">Full access for 1 year</div>
+                    <div class="plan-header-row">
+                        <div class="plan-title-group">
+                            <div class="plan-icon"><i class="fa-solid fa-crown"></i></div>
+                            <div class="plan-name">Yearly <span class="best-value-badge">BEST</span></div>
+                        </div>
+                        <div>
+                            <div class="plan-price" id="price-yearly">₹299</div>
+                            <div class="plan-duration">For 1 year</div>
+                        </div>
+                    </div>
                     <ul class="plan-features">
-                        <li><i class="fa-solid fa-circle-check"></i> All premium features</li>
-                        <li><i class="fa-solid fa-circle-check"></i> Priority support</li>
+                        <li><i class="fa-solid fa-check-circle"></i> Save 49% annually</li>
+                        <li><i class="fa-solid fa-check-circle"></i> Priority support</li>
                     </ul>
-                    <button class="btn-select">Select Plan</button>
                 </div>
 
                 <!-- Lifetime Plan -->
                 <div class="plan-card" data-plan="lifetime" data-price="799">
-                    <div class="radio-btn"></div>
-                    <div class="plan-icon"><i class="fa-regular fa-gem"></i></div>
-                    <div class="plan-name">Lifetime</div>
-                    <div class="plan-price">₹799</div>
-                    <div class="plan-duration">Full access forever</div>
+                    <div class="plan-header-row">
+                        <div class="plan-title-group">
+                            <div class="plan-icon"><i class="fa-regular fa-gem"></i></div>
+                            <div class="plan-name">Lifetime</div>
+                        </div>
+                        <div>
+                            <div class="plan-price" id="price-lifetime">₹799</div>
+                            <div class="plan-duration">Forever</div>
+                        </div>
+                    </div>
                     <ul class="plan-features">
-                        <li><i class="fa-solid fa-circle-check"></i> All premium features</li>
-                        <li><i class="fa-solid fa-circle-check"></i> Lifetime updates</li>
+                        <li><i class="fa-solid fa-check-circle"></i> Pay once, yours forever</li>
                     </ul>
-                    <button class="btn-select">Select Plan</button>
                 </div>
             </div>
 
@@ -266,72 +214,54 @@
                     <i class="fa-solid fa-receipt" style="color: var(--primary);"></i> Payment Summary
                 </div>
                 
-                <div class="summary-row">
-                    <span>Selected Plan</span>
-                    <span class="badge-plan" id="summaryPlanName" style="background: var(--primary); color: white;">Free</span>
-                </div>
-                
-                <!-- Promo Code UI -->
                 <div class="promo-box" id="promoContainer">
-                    <i class="fa-solid fa-tag" style="padding: 10px; color: var(--text-muted);"></i>
-                    <input type="text" id="couponCode" placeholder="Enter promo code">
+                    <input type="text" id="couponCode" placeholder="Have a promo code?">
                     <button id="applyPromoBtn">Apply</button>
                 </div>
 
-                <!-- Promo Success Banner -->
                 <div class="banner-coupon-success" id="bannerSuccess">
-                    <div>
-                        <i class="fa-solid fa-circle-check"></i> 
-                        <span id="promoMessageText">Coupon verified successfully!</span>
-                    </div>
-                    <strong id="tvSavedAmount">You saved ₹0</strong>
+                    <div><i class="fa-solid fa-check-circle" style="color: var(--success); margin-right: 6px;"></i> Coupon applied!</div>
+                    <strong id="tvSavedAmount" style="color: var(--success);">You saved ₹0</strong>
                 </div>
 
                 <div class="summary-row">
-                    <span>Subtotal</span>
+                    <span id="summaryPlanName">Selected Plan</span>
                     <span id="summarySubtotal">₹0</span>
                 </div>
                 
-                <!-- Discount Row (Hidden initially) -->
-                <div class="summary-row" id="discountRow" style="display: none; color: var(--success);">
+                <div class="summary-row" id="discountRow" style="display: none; color: var(--success); font-weight: bold;">
                     <span id="discountLabelText">Discount</span>
                     <span id="summaryDiscount">- ₹0</span>
                 </div>
 
                 <div class="summary-row total">
-                    <span>Total</span>
+                    <span>Total Payable</span>
                     <span id="summaryTotal">₹0</span>
-                </div>
-
-                <div class="terms-check">
-                    <input type="checkbox" id="termsCheck">
-                    <label for="termsCheck">I agree to the <a href="#">Terms & Conditions</a>, <a href="#">Refund & Cancellation Policy</a> and <a href="#">Privacy Policy</a>.</label>
-                </div>
-
-                <button class="btn-pay" id="payBtn" disabled>
-                    <i class="fa-solid fa-lock"></i> <span id="btnPayText">Continue to Payment</span>
-                </button>
-                <div class="secure-footer">
-                    <i class="fa-solid fa-shield-check"></i> Your payment is secure and encrypted.
                 </div>
             </div>
 
-            <!-- Footer -->
-            <footer>
-                <div>© 2026 Dayline. All rights reserved.</div>
-                <div class="footer-links">
-                    <a href="#">Terms & Conditions</a>
-                    <a href="#">Privacy Policy</a>
-                    <a href="#">Refund & Cancellation</a>
-                    <a href="#">Data Policy</a>
-                </div>
-            </footer>
+            <div class="terms-check">
+                <input type="checkbox" id="termsCheck">
+                <label for="termsCheck">I agree to the <a href="#">Terms</a> and <a href="#">Privacy Policy</a>.</label>
+            </div>
         </div>
+
+        <div class="bottom-pay-bar">
+            <button class="btn-pay" id="payBtn" disabled>
+                <span id="btnPayText">Proceed to Pay</span> <i class="fa-solid fa-arrow-right"></i>
+            </button>
+            <div class="secure-footer">
+                <i class="fa-solid fa-lock"></i> Secured by 256-bit encryption
+            </div>
+        </div>
+
+        <footer class="web-footer">
+            © 2026 Dayline. All rights reserved.
+        </footer>
     </div>
 
-    <!-- MODULE SCRIPT FOR FIREBASE v10 -->
- <!-- MODULE SCRIPT FOR FIREBASE v10 -->
-  <script type="module">
+    <!-- YOUR EXACT FIREBASE MODULE SCRIPT STAYS HERE -->
+    <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
         import { getDatabase, ref, get, child } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
@@ -340,7 +270,6 @@
             databaseURL: "https://dayline-nexify-default-rtdb.firebaseio.com",
             projectId: "dayline-nexify"
         };
-
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
         const cashfree = Cashfree({ mode: "sandbox" }); 
@@ -352,20 +281,15 @@
         const PLAN_DURATIONS = { 'monthly': 30, 'yearly': 365, 'lifetime': 36500 }; 
         const STANDARD_PRICES = { 'monthly': 49, 'yearly': 299, 'lifetime': 799 };
 
-        let sessionUser = "User"; 
-        let firebaseUid = ""; 
-        let currentUserData = { isPremium: false, current_plan: 'free' };
-        
-        let remainingValue = 0; 
-        let daysRemaining = 0;
-        let basePrice = 0;
-        let finalPriceToPay = 0;
-        let activeCoupon = null;
-        let currentTxType = "New Purchase"; // NEW: Tracks the exact type of transaction
+        let sessionUser = "User"; let firebaseUid = ""; let currentUserData = { isPremium: false, current_plan: 'free' };
+        let remainingValue = 0; let daysRemaining = 0; let basePrice = 0; let finalPriceToPay = 0;
+        let activeCoupon = null; let currentTxType = "New Purchase";
 
         const params = new URLSearchParams(window.location.search);
         const token = params.get('token');
-
+        
+        // Hide web-only UI if loaded from Sketchware WebView
+        if (params.get('source') === 'app') { document.body.classList.add('app-mode'); }
         if (!token) window.location.href = '/premium';
 
         const planCards = document.querySelectorAll('.plan-card');
@@ -388,79 +312,50 @@
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ code: token })
                 });
-
                 const data = await response.json();
                 sessionUser = data.accountName || "User"; 
-                
                 let fetchedUid = data.uid || ""; 
                 if (fetchedUid === "") {
                     const codeSnap = await get(child(ref(db), `generated_codes/${token}`));
                     if (codeSnap.exists() && codeSnap.val().uid) fetchedUid = codeSnap.val().uid;
                 }
                 firebaseUid = fetchedUid;
-                
                 document.getElementById('displayCode').textContent = token;
-                document.getElementById('displayUser').textContent = sessionUser;
-
                 await fetchFirebaseDetails(firebaseUid);
-
                 document.getElementById('securityLoader').style.display = 'none';
                 document.getElementById('mainAppUI').style.display = 'block';
-
             } catch (error) {
-                alert("Session invalid or expired.");
-                window.location.href = '/premium';
+                alert("Session invalid or expired."); window.location.href = '/premium';
             }
         }
         
         async function fetchFirebaseDetails(uid) {
             if (!uid || uid === "") return renderDynamicPlans();
-
             try {
                 const [userSnap, activePlanSnap] = await Promise.all([
-                    get(child(ref(db), `users/${uid}`)),
-                    get(child(ref(db), `Active_plan/${uid}`))
+                    get(child(ref(db), `users/${uid}`)), get(child(ref(db), `Active_plan/${uid}`))
                 ]);
-
                 if (userSnap.exists()) currentUserData = { ...currentUserData, ...userSnap.val() };
-                
                 const currentPlanText = currentUserData.current_plan || "Free";
-                document.getElementById('displayPlan').textContent = currentPlanText.charAt(0).toUpperCase() + currentPlanText.slice(1);
-
-                if (activePlanSnap.exists() && currentUserData.isPremium) {
-                    calculateProration(activePlanSnap.val());
-                }
-
+                document.getElementById('displayPlan').textContent = currentPlanText;
+                if (activePlanSnap.exists() && currentUserData.isPremium) calculateProration(activePlanSnap.val());
                 renderDynamicPlans();
-            } catch (error) {
-                renderDynamicPlans();
-            }
+            } catch (error) { renderDynamicPlans(); }
         }
 
-        // FIXED PRORATION LOGIC
         function calculateProration(planData) {
             const expiry = new Date(planData.expiry_date);
             const now = new Date();
             daysRemaining = Math.ceil((expiry - now) / (1000 * 60 * 60 * 24));
-
             if (daysRemaining > 0) {
                 document.getElementById('expiryBanner').style.display = 'flex';
-                
-                if (planData.plan_type.toLowerCase() === 'lifetime') {
-                    document.getElementById('expiryText').innerHTML = `Your <strong>Lifetime</strong> plan is active forever.`;
-                } else {
-                    document.getElementById('expiryText').innerHTML = `Your <strong>${planData.plan_type}</strong> plan is active. Expires in <strong>${daysRemaining} days</strong>.`;
-                }
-
-                // Fallback to standard prices if planData.amount is corrupted or missing
+                document.getElementById('expiryText').textContent = planData.plan_type.toLowerCase() === 'lifetime' 
+                    ? `Lifetime plan active.` 
+                    : `Active for ${daysRemaining} more days.`;
                 const safeAmountPaid = parseFloat(planData.amount) || STANDARD_PRICES[planData.plan_type.toLowerCase()] || 0;
                 const totalPlanDays = PLAN_DURATIONS[planData.plan_type.toLowerCase()] || 30;
-                
-                const dailyRate = safeAmountPaid / totalPlanDays;
-                remainingValue = Math.floor(dailyRate * daysRemaining);
-            } else {
-                daysRemaining = 0; remainingValue = 0; currentUserData.isPremium = false; 
-            }
+                remainingValue = Math.floor((safeAmountPaid / totalPlanDays) * daysRemaining);
+            } else { daysRemaining = 0; remainingValue = 0; currentUserData.isPremium = false; }
         }
 
         function renderDynamicPlans() {
@@ -471,47 +366,33 @@
                 const cardPlan = card.getAttribute('data-plan');
                 const cardRank = PLAN_HIERARCHY[cardPlan];
                 const baseCardPrice = parseInt(card.getAttribute('data-price'));
-                const btn = card.querySelector('.btn-select');
-                const priceElement = card.querySelector('.plan-price');
-
+                
                 card.classList.remove('active', 'disabled'); 
 
-                if (cardRank < currentRank) {
-                    card.classList.add('disabled');
-                    btn.textContent = 'Unavailable';
-                } 
+                if (cardRank < currentRank) { card.classList.add('disabled'); } 
                 else if (cardRank === currentRank && currentRank > 0) {
                     if (cardPlan === 'lifetime') {
-                        card.classList.add('active', 'disabled'); 
-                        btn.textContent = 'Active Forever';
-                        basePrice = 0; finalPriceToPay = 0;
-                        summaryPlanName.textContent = "Lifetime"; summarySubtotal.textContent = `₹0`;
+                        card.classList.add('active', 'disabled'); basePrice = 0; finalPriceToPay = 0;
+                        summaryPlanName.textContent = "Lifetime Plan"; summarySubtotal.textContent = `₹0`;
                         updatePayButton(); defaultSelected = true;
                     } else {
-                        card.classList.add('active'); 
-                        btn.textContent = 'Top-up (+ ' + PLAN_DURATIONS[cardPlan] + ' days)';
-                        selectPlan(card); defaultSelected = true;
+                        card.classList.add('active'); selectPlan(card); defaultSelected = true;
                     }
                 } 
                 else if (cardRank > currentRank && currentUserData.isPremium && remainingValue > 0) {
-                    btn.textContent = 'Upgrade Plan';
                     const proratedPrice = Math.max(0, baseCardPrice - remainingValue);
-                    priceElement.innerHTML = `<span class="original-price">₹${baseCardPrice}</span>₹${proratedPrice}`;
+                    card.querySelector('.plan-price').innerHTML = `<span style="text-decoration:line-through; font-size:12px; color:#666677;">₹${baseCardPrice}</span> ₹${proratedPrice}`;
                     card.setAttribute('data-prorated-price', proratedPrice);
                 }
 
-                if (currentRank === 0 && cardPlan === 'free') {
-                    card.classList.add('active'); selectPlan(card); defaultSelected = true;
-                }
+                if (currentRank === 0 && cardPlan === 'yearly') { card.classList.add('active'); selectPlan(card); defaultSelected = true; }
             });
-
             if (!defaultSelected && currentRank !== 3) {
                 const availableCard = document.querySelector('.plan-card:not(.disabled)');
                 if (availableCard) { availableCard.classList.add('active'); selectPlan(availableCard); }
             }
         }
 
-        // NEW: Assign transaction type when card is selected
         function selectPlan(card) {
             if (card.classList.contains('disabled')) return;
             planCards.forEach(c => c.classList.remove('active'));
@@ -521,20 +402,18 @@
             const cardRank = PLAN_HIERARCHY[cardPlan];
             const currentRank = PLAN_HIERARCHY[currentUserData.current_plan.toLowerCase()] || 0;
 
-            // DETERMINE TRANSACTION TYPE
             if (cardRank === currentRank) currentTxType = "Top-up";
             else if (cardRank > currentRank && currentUserData.isPremium) currentTxType = "Premium Upgrade";
             else currentTxType = "New Purchase";
 
             basePrice = parseInt(card.getAttribute('data-prorated-price') || card.getAttribute('data-price'));
             finalPriceToPay = basePrice;
-            summaryPlanName.textContent = card.querySelector('.plan-name').textContent;
+            summaryPlanName.textContent = card.querySelector('.plan-name').textContent + " Plan";
             summarySubtotal.textContent = `₹${basePrice}`;
             
             if (card.getAttribute('data-prorated-price')) {
-                discountRow.style.display = 'flex'; discountRow.style.color = 'var(--text-muted)';
-                discountLabelText.textContent = "Upgrade Credit";
-                summaryDiscount.textContent = `(Includes ₹${remainingValue} adjustment)`;
+                discountRow.style.display = 'flex'; discountLabelText.textContent = "Upgrade Credit";
+                summaryDiscount.textContent = `(-₹${remainingValue})`;
             } else { discountRow.style.display = 'none'; }
             
             clearPromo(); updatePayButton();
@@ -543,33 +422,24 @@
         function clearPromo() {
             activeCoupon = null; couponInput.value = ""; bannerSuccess.style.display = "none";
             promoContainer.style.display = "flex"; finalPriceToPay = basePrice;
-            
-            const activeCard = document.querySelector('.plan-card.active');
-            if (activeCard && activeCard.getAttribute('data-prorated-price')) {
-                discountRow.style.display = 'flex'; discountRow.style.color = 'var(--text-muted)';
-                discountLabelText.textContent = "Upgrade Credit"; summaryDiscount.textContent = `(Includes ₹${remainingValue} adjustment)`;
-            } else { discountRow.style.display = "none"; }
-
-            summaryTotal.textContent = `₹${finalPriceToPay}`; btnPayText.textContent = `Continue to Payment`;
+            summaryTotal.textContent = `₹${finalPriceToPay}`; updatePayButton();
         }
 
         function updatePayButton() {
             if (basePrice === 0 || !termsCheck.checked) {
-                payBtn.disabled = true; btnPayText.textContent = 'Continue to Payment';
+                payBtn.disabled = true; btnPayText.textContent = 'Proceed to Pay';
             } else {
-                payBtn.disabled = false; btnPayText.textContent = `Pay ₹${finalPriceToPay} Securely`;
+                payBtn.disabled = false; btnPayText.textContent = `Pay ₹${finalPriceToPay}`;
             }
         }
 
         planCards.forEach(card => card.addEventListener('click', () => selectPlan(card)));
         termsCheck.addEventListener('change', updatePayButton);
 
-        // --- CASHFREE CHECKOUT ---
         payBtn.addEventListener('click', async () => {
             if (finalPriceToPay === 0 || !termsCheck.checked) return;
-
-            const originalBtnHtml = payBtn.innerHTML;
-            payBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Connecting securely...';
+            const originalBtnHtml = btnPayText.innerHTML;
+            btnPayText.innerHTML = 'Connecting securely...';
             payBtn.disabled = true;
 
             try {
@@ -579,42 +449,33 @@
                 const response = await fetch(CHECKOUT_API_URL, {
                     method: "POST", headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        action: "create_order",
-                        userId: firebaseUid || sessionUser, 
-                        planAmount: finalPriceToPay,
-                        planType: selectedPlanType,
-                        txType: currentTxType, // PASSING THE TX TYPE TO BACKEND
-                        couponCode: activeCoupon,
-                        daylineCode: token
+                        action: "create_order", userId: firebaseUid || sessionUser, 
+                        planAmount: finalPriceToPay, planType: selectedPlanType,
+                        txType: currentTxType, couponCode: activeCoupon, daylineCode: token
                     })
                 });
 
                 const data = await response.json();
-                if (data.status !== "success") throw new Error(data.message || "Payment failed to initialize.");
+                if (data.status !== "success") throw new Error(data.message || "Payment failed.");
 
-                cashfree.checkout({
-                    paymentSessionId: data.payment_session_id,
-                    redirectTarget: "_modal" 
-                }).then(async (result) => {
+                cashfree.checkout({ paymentSessionId: data.payment_session_id, redirectTarget: "_modal" })
+                .then(async (result) => {
                     if (result.error) {
                         await finalizeUpdates(data.order_id, "FAILED", activeCoupon);
                         alert(result.error.message || "Payment cancelled.");
-                        payBtn.innerHTML = originalBtnHtml; updatePayButton();
+                        btnPayText.innerHTML = originalBtnHtml; updatePayButton();
                     }
                     if (result.paymentDetails) {
-                        payBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Finalizing...';
+                        btnPayText.innerHTML = 'Finalizing...';
                         await finalizeUpdates(data.order_id, "SUCCESS", activeCoupon);
                         await sendSuccessNotification(firebaseUid);
-                        
-                        sessionStorage.setItem('dayline_payment_success_auth', 'VERIFIED_PAID');
-                        sessionStorage.setItem('dayline_completed_code', token);
-                        sessionStorage.setItem('dayline_completed_user', sessionUser);
+                        // Redirect to success URL to be caught by Sketchware
                         window.location.href = "/success"; 
                     }
                 });
             } catch (error) {
                 alert("Error: " + error.message);
-                payBtn.innerHTML = originalBtnHtml; updatePayButton();
+                btnPayText.innerHTML = originalBtnHtml; updatePayButton();
             }
         });
 
@@ -624,18 +485,12 @@
                 await fetch(CHECKOUT_API_URL, {
                     method: "POST", headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        action: "finalize_payment",
-                        orderId: orderId,
-                        paymentStatus: status,
-                        userId: firebaseUid || sessionUser,
-                        planType: activeCard ? activeCard.getAttribute('data-plan') : 'monthly',
-                        txType: currentTxType, // PASSING THE TX TYPE
-                        amountPaid: finalPriceToPay,
-                        couponCode: coupon,
-                        daylineCode: token 
+                        action: "finalize_payment", orderId: orderId, paymentStatus: status,
+                        userId: firebaseUid || sessionUser, planType: activeCard ? activeCard.getAttribute('data-plan') : 'monthly',
+                        txType: currentTxType, amountPaid: finalPriceToPay, couponCode: coupon, daylineCode: token 
                     })
                 });
-            } catch (e) { console.error(e); }
+            } catch (e) {}
         }
 
         async function sendSuccessNotification(uid) {
@@ -647,7 +502,6 @@
                 });
             } catch (error) {}
         }
-
         verifySession();
     </script>
 </body>
