@@ -25,62 +25,73 @@
     <h2 id="statusText">Initiating Secure Payment...</h2>
     <p>Please do not close this window or press back.</p>
 
-    <script>
-        const cashfree = Cashfree({ mode: "sandbox" }); 
-        
-        // ONLY extract the secure Order ID
-        const params = new URLSearchParams(window.location.search);
-        const orderId = params.get('order_id');
+   <script>
+    const cashfree = Cashfree({ mode: "sandbox" }); 
+    const params = new URLSearchParams(window.location.search);
+    const orderId = params.get('order_id');
 
-        async function startPayment() {
-            if (!orderId) {
-                document.getElementById('statusText').innerText = "Invalid Payment Request";
-                return;
-            }
-
-            try {
-                // 1. Tell backend to create order using the Firebase DB record
-                const response = await fetch("/api/checkout/initiate", {
-                    method: "POST", headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ order_id: orderId })
-                });
-
-                const data = await response.json();
-                if (data.status !== "success") throw new Error(data.message);
-
-                document.getElementById('statusText').innerText = "Awaiting Payment...";
-                
-                // 2. Launch Cashfree UI
-                cashfree.checkout({
-                    paymentSessionId: data.payment_session_id,
-                    redirectTarget: "_modal"
-                }).then(async (result) => {
-                    
-                    document.getElementById('statusText').innerText = "Verifying Transaction...";
-                    
-                    // 3. Tell backend to verify via Cashfree Webhooks/API, update Firebase, and trigger emails
-                    const verifyResponse = await fetch("/api/checkout/verify", {
-                        method: "POST", headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ 
-                            order_id: orderId,
-                            cashfree_status: result.error ? "FAILED" : "SUCCESS"
-                        })
-                    });
-
-                    if (result.error) {
-                        window.location.href = "/failed"; 
-                    } else if (result.paymentDetails) {
-                        window.location.href = "/success"; 
-                    }
-                });
-
-            } catch (error) {
-                alert("Error initializing payment: " + error.message);
-                window.location.href = "/failed";
-            }
+    async function startPayment() {
+        if (!orderId) {
+            document.getElementById('statusText').innerText = "Invalid Payment Request";
+            return;
         }
 
-        startPayment();
-    </script>
+        try {
+            // 1. Initiate Order via backend
+            const response = await fetch("/api/checkout/initiate", {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ order_id: orderId })
+            });
+
+            const data = await response.json();
+            if (data.status !== "success") throw new Error(data.message);
+
+            document.getElementById('statusText').innerText = "Awaiting Payment...";
+            
+            // 2. Launch Cashfree
+            cashfree.checkout({
+                paymentSessionId: data.payment_session_id,
+                redirectTarget: "_modal"
+            }).then(async (result) => {
+                document.getElementById('statusText').innerText = "Verifying Transaction...";
+                
+                let remarks = "";
+                let finalStatus = "";
+
+                if (result.error) {
+                    // Capture exact reason it failed or if user closed the modal
+                    finalStatus = "FAILED";
+                    remarks = result.error.message || "User cancelled or payment failed at gateway.";
+                } else if (result.paymentDetails) {
+                    // Capture success info
+                    finalStatus = "SUCCESS";
+                    remarks = result.paymentDetails.paymentMessage || "Payment processed successfully.";
+                }
+
+                // 3. Send Status AND Remarks to backend
+                const verifyResponse = await fetch("/api/checkout/verify", {
+                    method: "POST", headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ 
+                        order_id: orderId,
+                        cashfree_status: finalStatus,
+                        payment_remarks: remarks
+                    })
+                });
+
+                if (finalStatus === "FAILED") {
+                    window.location.href = "/failed"; 
+                } else {
+                    window.location.href = "/success"; 
+                }
+            });
+
+        } catch (error) {
+            alert("Error initializing payment: " + error.message);
+            window.location.href = "/failed";
+        }
+    }
+
+    startPayment();
+</script>
 </body>
 </html>
