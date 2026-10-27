@@ -17,9 +17,7 @@
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
-        .icon-box {
-            font-size: 48px; margin-bottom: 16px; display: none;
-        }
+        .icon-box { font-size: 48px; margin-bottom: 16px; display: none; }
         h2 { margin: 0 0 8px 0; font-size: 18px; text-align: center; }
         p { margin: 0; color: #666677; font-size: 13px; text-align: center; padding: 0 20px; line-height: 1.5; }
         
@@ -34,61 +32,52 @@
     <p id="subText">Please do not close this window or press back.</p>
 
    <script>
-    const cashfree = Cashfree({ mode: "sandbox" }); // Change to "production" for live
-    const CHECKOUT_API_URL = "/api/checkout"; // Ensure this matches your Vercel routing
-    
-    // 1. Properly extract ALL variables sent from Sketchware
+    const cashfree = Cashfree({ mode: "sandbox" }); 
+    const CHECKOUT_API_URL = "/api/checkout"; // Ensure this matches your Vercel route!
+
+    // 1. EXTRACT ALL VARIABLES FROM URL (Fixes the undefined crash)
     const params = new URLSearchParams(window.location.search);
-    const orderId = params.get('order_id');
-    const uid = params.get('uid');
+    const orderId = params.get('order_id') || "";
+    const uid = params.get('uid') || "";
     const planAmountStr = params.get('planAmount') || "0";
     const finalAmountStr = params.get('finalAmount') || "0";
     const discountAmountStr = params.get('discountAmount') || "0";
     const planStr = params.get('plan') || "Unknown";
     const txTypeStr = params.get('txType') || "New Purchase";
     const couponStr = params.get('couponCode') || "";
+    const daylineCodeStr = params.get('daylineCode') || "UNKNOWN_CODE";
 
-    // UI Helper Functions
-    function showSuccess(message) {
+    // Helper functions for UI (replaces freezing alerts)
+    function triggerRedirect(status, message) {
         document.getElementById('loadingSpinner').style.display = 'none';
         const icon = document.getElementById('statusIcon');
-        icon.style.display = 'block';
-        icon.innerHTML = '✅';
-        
         const title = document.getElementById('statusText');
-        title.innerHTML = 'Payment Successful!';
-        title.className = 'success-text';
+        const sub = document.getElementById('subText');
         
-        document.getElementById('subText').innerText = message + "\nRedirecting to app...";
-        
-        // Wait 2 seconds so user can read it, then close WebView
-        setTimeout(() => { window.location.href = "/success"; }, 2000);
-    }
-
-    function showFailed(message) {
-        document.getElementById('loadingSpinner').style.display = 'none';
-        const icon = document.getElementById('statusIcon');
         icon.style.display = 'block';
-        icon.innerHTML = '❌';
-        
-        const title = document.getElementById('statusText');
-        title.innerHTML = 'Payment Failed';
-        title.className = 'error-text';
-        
-        document.getElementById('subText').innerText = message + "\nReturning to checkout...";
-        
-        // Wait 2.5 seconds so user can read the error, then close WebView
-        setTimeout(() => { window.location.href = "/failed"; }, 2500);
+        if (status === "SUCCESS") {
+            icon.innerHTML = '✅';
+            title.innerHTML = 'Payment Successful!';
+            title.className = 'success-text';
+            sub.innerText = "Redirecting to app...";
+            setTimeout(() => { window.location.href = "/success"; }, 1500);
+        } else {
+            icon.innerHTML = '❌';
+            title.innerHTML = 'Payment Failed';
+            title.className = 'error-text';
+            sub.innerText = message + "\nReturning to checkout...";
+            setTimeout(() => { window.location.href = "/failed"; }, 2000);
+        }
     }
 
     async function startPayment() {
         if (!orderId || !uid) {
-            showFailed("Invalid Payment Request. Missing Order ID or User ID.");
+            triggerRedirect("FAILED", "Invalid Request. Missing ID.");
             return;
         }
 
         try {
-            // 2. Send extracted data to your Vercel backend (checkout_2.js)
+            // 2. CREATE ORDER
             const response = await fetch(CHECKOUT_API_URL, {
                 method: "POST", headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -100,7 +89,8 @@
                     discountAmount: discountAmountStr, 
                     planType: planStr,
                     txType: txTypeStr, 
-                    couponCode: couponStr
+                    couponCode: couponStr,
+                    daylineCode: daylineCodeStr
                 })
             });
 
@@ -109,7 +99,7 @@
 
             document.getElementById('statusText').innerText = "Awaiting Payment...";
             
-            // 3. Launch Cashfree Modal
+            // 3. LAUNCH CASHFREE
             cashfree.checkout({
                 paymentSessionId: data.payment_session_id,
                 redirectTarget: "_modal"
@@ -124,10 +114,10 @@
                     remarks = result.error.message || "User cancelled or payment failed at gateway.";
                 } else if (result.paymentDetails) {
                     finalStatus = "SUCCESS";
-                    remarks = result.paymentDetails.paymentMessage || "Payment processed successfully.";
+                    remarks = "Payment processed successfully.";
                 }
 
-                // 4. Verify with Backend
+                // 4. FINALIZE PAYMENT
                 const verifyResponse = await fetch(CHECKOUT_API_URL, {
                     method: "POST", headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ 
@@ -137,26 +127,23 @@
                         planType: planStr,
                         txType: txTypeStr,
                         amountPaid: finalAmountStr,
-                        frontendRemarks: remarks
+                        paymentStatus: finalStatus,
+                        frontendRemarks: remarks,
+                        daylineCode: daylineCodeStr
                     })
                 });
 
                 const verifyData = await verifyResponse.json();
 
-                // 5. Trigger the appropriate visual UI
-                if (finalStatus === "FAILED" || verifyData.payment_status === "FAILED") {
-                    showFailed(remarks);
-                } else {
-                    showSuccess(remarks);
-                }
+                // 5. REDIRECT BACK TO APP
+                triggerRedirect(finalStatus, remarks);
             });
 
         } catch (error) {
-            showFailed(error.message);
+            triggerRedirect("FAILED", error.message);
         }
     }
 
-    // Start process automatically
     startPayment();
 </script>
 </body>
