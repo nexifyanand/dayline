@@ -13,7 +13,7 @@ export default async function handler(req, res) {
 
     const CF_APP_ID = process.env.CASHFREE_APP_ID;
     const CF_SECRET = process.env.CASHFREE_SECRET_KEY;
-    const CF_ENV_URL = "https://sandbox.cashfree.com/pg/orders"; // Change for prod
+    const CF_ENV_URL = "https://sandbox.cashfree.com/pg/orders"; // Change to api.cashfree.com for prod
 
     function generateOrderId() {
         const now = new Date();
@@ -28,24 +28,34 @@ export default async function handler(req, res) {
 
     try {
         if (action === "create_order") {
-            const { userId, planAmount, planType, txType, couponCode, daylineCode } = req.body;
-            const orderId = generateOrderId();
+            // Added new coupon and discount fields to the request
+            const { userId, planAmount, finalAmount, planType, txType, couponCode, discountAmount, daylineCode } = req.body;
+            
+            // If Sketchware sends an orderId, use it. Otherwise, generate one.
+            const orderId = req.body.orderId || generateOrderId(); 
             const nowIso = new Date().toISOString();
             const activeDaylineCode = daylineCode || "UNKNOWN_CODE";
             const actualTxType = txType || "New Purchase";
 
+            // UPDATED: Comprehensive Transaction Payload
             const initialData = {
                 orderId: orderId,
                 userId: userId,
                 daylineCode: activeDaylineCode,
-                paymentChannel: "web",
-                paymentType: `${actualTxType} (${planType || "Unknown"})`, // DYNAMICALLY SET
-                amount: parseFloat(planAmount),
+                paymentChannel: "Cashfree",
+                paymentType: actualTxType, 
+                amount: parseFloat(finalAmount || planAmount),
+                planAmount: parseFloat(planAmount),
+                discountAmount: parseFloat(discountAmount || 0),
+                couponApplied: couponCode ? "yes" : "no",
+                coupon: couponCode || "None",
+                couponAmount: parseFloat(discountAmount || 0),
                 planType: planType || "Unknown",
-                couponApplied: couponCode || "None",
                 status: "INITIATED",
                 gatewayStatus: "INITIATED",
-                timestamp: nowIso
+                paymentRemarks: "Order initiated securely.",
+                timestamp: nowIso,
+                lastUpdatedAt: nowIso
             };
 
             await Promise.all([
@@ -61,7 +71,7 @@ export default async function handler(req, res) {
                     "x-client-id": CF_APP_ID, "x-client-secret": CF_SECRET
                 },
                 body: JSON.stringify({
-                    order_id: orderId, order_amount: parseFloat(planAmount), order_currency: "INR",
+                    order_id: orderId, order_amount: parseFloat(finalAmount || planAmount), order_currency: "INR",
                     customer_details: { customer_id: userId, customer_phone: "9999999999" },
                     order_meta: { return_url: "https://your-domain.com/success?order_id={order_id}" }
                 })
@@ -83,12 +93,49 @@ export default async function handler(req, res) {
         }
 
         else if (action === "finalize_payment") {
-            const { orderId, paymentStatus, userId, planType, txType, amountPaid, daylineCode } = req.body;
+            const { orderId, userId, planType, txType, amountPaid, daylineCode, frontendRemarks } = req.body;
             const nowIso = new Date().toISOString();
             const activeDaylineCode = daylineCode || "UNKNOWN_CODE";
 
+            // ==========================================
+            // SECURE SERVER-SIDE VERIFICATION
+            // ==========================================
+            const cfVerifyResponse = await fetch(`${CF_ENV_URL}/${orderId}`, {
+                method: "GET",
+                headers: {
+                    "accept": "application/json", "x-api-version": "2023-08-01",
+                    "x-client-id": CF_APP_ID, "x-client-secret": CF_SECRET
+                }
+            });
+            const cfVerifyData = await cfVerifyResponse.json();
+
+            let secureStatus = "FAILED";
+            let gatewayRemarks = frontendRemarks || "Transaction Failed";
+
+            // Cashfree returns "PAID" for successful orders
+            if (cfVerifyData.order_status === "PAID") {
+                secureStatus = "SUCCESS";
+                gatewayRemarks = "Payment processed successfully.";
+            } else if (cfVerifyData.order_status === "ACTIVE") {
+                secureStatus = "PENDING";
+                gatewayRemarks = "Payment is pending at gateway.";
+            } else {
+                secureStatus = "FAILED";
+                // Capture exact error from Cashfree if available (e.g. "User cancelled", "Declined by bank")
+                if (cfVerifyData.error_details && cfVerifyData.error_details.error_description) {
+                    gatewayRemarks = cfVerifyData.error_details.error_description;
+                } else if (frontendRemarks) {
+                    gatewayRemarks = frontendRemarks;
+                } else {
+                    gatewayRemarks = "Transaction failed or cancelled.";
+                }
+            }
+
             const finalUpdates = {
-                status: paymentStatus.toUpperCase(), gatewayStatus: paymentStatus.toUpperCase(), lastUpdatedAt: nowIso
+                status: secureStatus, 
+                gatewayStatus: secureStatus, 
+                paymentRemarks: gatewayRemarks,
+                lastUpdatedAt: nowIso
             };
 
             await Promise.all([
@@ -97,12 +144,13 @@ export default async function handler(req, res) {
                 fetch(`${dbUrl}Daylinecode_transactions/${activeDaylineCode}/${orderId}.json${authQuery}`, { method: 'PATCH', body: JSON.stringify(finalUpdates) })
             ]);
 
-            if (paymentStatus.toUpperCase() === "SUCCESS") {
+            // ONLY UPGRADE IF SECURE STATUS IS SUCCESS
+            if (secureStatus === "SUCCESS") {
                 const cleanPlan = (planType || "monthly").toLowerCase();
                 let expiryDate = new Date();
                 let finalPlanAmount = parseFloat(amountPaid) || 0;
 
-                // CRITICAL FIX: Distinguish Top-up from Upgrade mathematically
+                // Existing Proration/Top-up Logic
                 if (txType === "Top-up") {
                     const planRes = await fetch(`${dbUrl}Active_plan/${userId}.json${authQuery}`);
                     const currentPlan = await planRes.json() || {};
@@ -114,9 +162,8 @@ export default async function handler(req, res) {
                     else baseExpiry.setDate(baseExpiry.getDate() + 30);
                     
                     expiryDate = baseExpiry;
-                    finalPlanAmount += parseFloat(currentPlan.amount || 0); // Accumulate value for top-ups
+                    finalPlanAmount += parseFloat(currentPlan.amount || 0); 
                 } else {
-                    // Prorated Upgrade or New Purchase: Start timer from today
                     if (cleanPlan === "lifetime") expiryDate = new Date("9999-12-31T23:59:59.999Z");
                     else if (cleanPlan === "yearly") expiryDate.setDate(expiryDate.getDate() + 365);
                     else expiryDate.setDate(expiryDate.getDate() + 30);
@@ -153,7 +200,7 @@ export default async function handler(req, res) {
                 });
             }
 
-            return res.status(200).json({ status: "success", message: "Database updated" });
+            return res.status(200).json({ status: "success", payment_status: secureStatus, message: "Database updated" });
         }
 
         return res.status(400).json({ status: "error", message: "Invalid action" });
