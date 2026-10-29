@@ -131,6 +131,7 @@ export default async function handler(req, res) {
                 }
             }
 
+           // 1. UPDATE TRANSACTION HISTORY (mytransactions)
             const finalUpdates = {
                 status: secureStatus, 
                 gatewayStatus: secureStatus, 
@@ -146,41 +147,54 @@ export default async function handler(req, res) {
 
             // ONLY UPGRADE IF SECURE STATUS IS SUCCESS
             if (secureStatus === "SUCCESS") {
-                const cleanPlan = (planType || "monthly").toLowerCase();
+                // Ensure plan name is UPPERCASE as requested (e.g., MONTHLY, YEARLY)
+                const cleanPlan = (planType || "MONTHLY").toUpperCase(); 
                 let expiryDate = new Date();
                 let finalPlanAmount = parseFloat(amountPaid) || 0;
 
-                // Existing Proration/Top-up Logic
+                // Existing Proration/Top-up Math
                 if (txType === "Top-up") {
                     const planRes = await fetch(`${dbUrl}Active_plan/${userId}.json${authQuery}`);
                     const currentPlan = await planRes.json() || {};
                     
-                    let baseExpiry = currentPlan.expiry_date ? new Date(currentPlan.expiry_date) : new Date();
+                    let baseExpiry = currentPlan.expiry_date ? new Date(parseInt(currentPlan.expiry_date)) : new Date();
                     if (baseExpiry.getTime() < Date.now()) baseExpiry = new Date();
                     
-                    if (cleanPlan === "yearly") baseExpiry.setDate(baseExpiry.getDate() + 365);
+                    if (cleanPlan === "YEARLY") baseExpiry.setDate(baseExpiry.getDate() + 365);
                     else baseExpiry.setDate(baseExpiry.getDate() + 30);
                     
                     expiryDate = baseExpiry;
                     finalPlanAmount += parseFloat(currentPlan.amount || 0); 
                 } else {
-                    if (cleanPlan === "lifetime") expiryDate = new Date("9999-12-31T23:59:59.999Z");
-                    else if (cleanPlan === "yearly") expiryDate.setDate(expiryDate.getDate() + 365);
+                    if (cleanPlan === "LIFETIME") expiryDate = new Date("9999-12-31T23:59:59.999Z");
+                    else if (cleanPlan === "YEARLY") expiryDate.setDate(expiryDate.getDate() + 365);
                     else expiryDate.setDate(expiryDate.getDate() + 30);
                 }
 
+                // 2. UPDATE USERS NODE
                 await fetch(`${dbUrl}users/${userId}.json${authQuery}`, {
                     method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ isPremium: true, current_plan: cleanPlan, premiumActivatedAt: nowIso })
-                });
-
-                await fetch(`${dbUrl}Active_plan/${userId}.json${authQuery}`, {
-                    method: 'PUT', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        uid: userId, amount: finalPlanAmount, expiry_date: expiryDate.toISOString(), plan_type: cleanPlan, premium_purchase_date: nowIso
+                    body: JSON.stringify({ 
+                        isPremium: true, 
+                        current_plan: cleanPlan, 
+                        premiumActivatedAt: nowIso 
                     })
                 });
 
+                // 3. UPDATE ACTIVE_PLAN NODE (Including new lastpaymentid)
+                await fetch(`${dbUrl}Active_plan/${userId}.json${authQuery}`, {
+                    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        uid: userId, 
+                        amount: finalPlanAmount, 
+                        expiry_date: expiryDate.getTime().toString(), // Saved as a timestamp string for Android Java to read
+                        plan_type: cleanPlan, 
+                        premium_purchase_date: nowIso,
+                        lastpaymentid: orderId 
+                    })
+                });
+
+                // (Optional) Clear generated codes if used
                 if (activeDaylineCode !== "UNKNOWN_CODE") {
                     await fetch(`${dbUrl}used_codes/${userId}/${activeDaylineCode}.json${authQuery}`, {
                         method: 'PUT', headers: { 'Content-Type': 'application/json' },
@@ -189,12 +203,13 @@ export default async function handler(req, res) {
                     await fetch(`${dbUrl}generated_codes/${activeDaylineCode}.json${authQuery}`, { method: 'DELETE' });
                 }
 
+                // Push Notification Entry
                 const notificationId = `notif_${Date.now()}`;
                 await fetch(`${dbUrl}notifications/${userId}/${notificationId}.json${authQuery}`, {
                     method: 'PUT', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         title: "Payment Successful! 🎉",
-                        message: `Your payment of ₹${amountPaid} for the ${cleanPlan.toUpperCase()} plan was received successfully.`,
+                        message: `Your payment of ₹${amountPaid} for the ${cleanPlan} plan was received successfully.`,
                         type: "PAYMENT_RECEIPT", orderId: orderId, timestamp: nowIso, isRead: false
                     })
                 });
