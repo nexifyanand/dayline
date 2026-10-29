@@ -92,46 +92,50 @@ export default async function handler(req, res) {
             }
         }
 
-        else if (action === "finalize_payment") {
-            const { orderId, userId, planType, txType, amountPaid, daylineCode, frontendRemarks } = req.body;
+       else if (action === "finalize_payment") {
+            // 1. EXTRACT paymentStatus SENT FROM THE FRONTEND
+            const { orderId, userId, planType, txType, amountPaid, daylineCode, frontendRemarks, paymentStatus } = req.body;
             const nowIso = new Date().toISOString();
             const activeDaylineCode = daylineCode || "UNKNOWN_CODE";
-
-            // ==========================================
-            // SECURE SERVER-SIDE VERIFICATION
-            // ==========================================
-            const cfVerifyResponse = await fetch(`${CF_ENV_URL}/${orderId}`, {
-                method: "GET",
-                headers: {
-                    "accept": "application/json", "x-api-version": "2023-08-01",
-                    "x-client-id": CF_APP_ID, "x-client-secret": CF_SECRET
-                }
-            });
-            const cfVerifyData = await cfVerifyResponse.json();
 
             let secureStatus = "FAILED";
             let gatewayRemarks = frontendRemarks || "Transaction Failed";
 
-            // Cashfree returns "PAID" for successful orders
-            if (cfVerifyData.order_status === "PAID") {
-                secureStatus = "SUCCESS";
-                gatewayRemarks = "Payment processed successfully.";
-            } else if (cfVerifyData.order_status === "ACTIVE") {
-                secureStatus = "PENDING";
-                gatewayRemarks = "Payment is pending at gateway.";
-            } else {
+            // 2. IF FRONTEND SAYS FAILED (User cancelled / Wrong PIN), MARK AS FAILED.
+            if (paymentStatus === "FAILED") {
                 secureStatus = "FAILED";
-                // Capture exact error from Cashfree if available (e.g. "User cancelled", "Declined by bank")
-                if (cfVerifyData.error_details && cfVerifyData.error_details.error_description) {
-                    gatewayRemarks = cfVerifyData.error_details.error_description;
-                } else if (frontendRemarks) {
-                    gatewayRemarks = frontendRemarks;
+            } else {
+                // 3. IF SUCCESSFUL, GIVE CASHFREE 2 SECONDS TO SYNC THEIR SERVERS
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
+                // 4. NOW SECURELY VERIFY WITH CASHFREE
+                const cfVerifyResponse = await fetch(`${CF_ENV_URL}/${orderId}`, {
+                    method: "GET",
+                    headers: {
+                        "accept": "application/json", "x-api-version": "2023-08-01",
+                        "x-client-id": CF_APP_ID, "x-client-secret": CF_SECRET
+                    }
+                });
+                const cfVerifyData = await cfVerifyResponse.json();
+
+                if (cfVerifyData.order_status === "PAID") {
+                    secureStatus = "SUCCESS";
+                    gatewayRemarks = "Payment processed successfully.";
+                } else if (cfVerifyData.order_status === "ACTIVE") {
+                    // Order is still active, meaning the bank is genuinely delaying the confirmation
+                    secureStatus = "PENDING";
+                    gatewayRemarks = "Payment is pending at gateway.";
                 } else {
-                    gatewayRemarks = "Transaction failed or cancelled.";
+                    secureStatus = "FAILED";
+                    if (cfVerifyData.error_details && cfVerifyData.error_details.error_description) {
+                        gatewayRemarks = cfVerifyData.error_details.error_description;
+                    } else if (frontendRemarks) {
+                        gatewayRemarks = frontendRemarks;
+                    }
                 }
             }
 
-           // 1. UPDATE TRANSACTION HISTORY (mytransactions)
+            // 5. UPDATE TRANSACTION HISTORY (mytransactions)
             const finalUpdates = {
                 status: secureStatus, 
                 gatewayStatus: secureStatus, 
@@ -145,14 +149,13 @@ export default async function handler(req, res) {
                 fetch(`${dbUrl}Daylinecode_transactions/${activeDaylineCode}/${orderId}.json${authQuery}`, { method: 'PATCH', body: JSON.stringify(finalUpdates) })
             ]);
 
-            // ONLY UPGRADE IF SECURE STATUS IS SUCCESS
+            // 6. ONLY UPGRADE IF SECURE STATUS IS SUCCESS
             if (secureStatus === "SUCCESS") {
-                // Ensure plan name is UPPERCASE as requested (e.g., MONTHLY, YEARLY)
                 const cleanPlan = (planType || "MONTHLY").toUpperCase(); 
                 let expiryDate = new Date();
                 let finalPlanAmount = parseFloat(amountPaid) || 0;
 
-                // Existing Proration/Top-up Math
+                // Proration/Top-up Math
                 if (txType === "Top-up") {
                     const planRes = await fetch(`${dbUrl}Active_plan/${userId}.json${authQuery}`);
                     const currentPlan = await planRes.json() || {};
@@ -171,7 +174,7 @@ export default async function handler(req, res) {
                     else expiryDate.setDate(expiryDate.getDate() + 30);
                 }
 
-                // 2. UPDATE USERS NODE
+                // UPDATE USERS NODE
                 await fetch(`${dbUrl}users/${userId}.json${authQuery}`, {
                     method: 'PATCH', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
@@ -181,20 +184,20 @@ export default async function handler(req, res) {
                     })
                 });
 
-                // 3. UPDATE ACTIVE_PLAN NODE (Including new lastpaymentid)
+                // UPDATE ACTIVE_PLAN NODE 
                 await fetch(`${dbUrl}Active_plan/${userId}.json${authQuery}`, {
                     method: 'PUT', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         uid: userId, 
                         amount: finalPlanAmount, 
-                        expiry_date: expiryDate.getTime().toString(), // Saved as a timestamp string for Android Java to read
+                        expiry_date: expiryDate.getTime().toString(), 
                         plan_type: cleanPlan, 
                         premium_purchase_date: nowIso,
                         lastpaymentid: orderId 
                     })
                 });
 
-                // (Optional) Clear generated codes if used
+                // Clear generated codes if used
                 if (activeDaylineCode !== "UNKNOWN_CODE") {
                     await fetch(`${dbUrl}used_codes/${userId}/${activeDaylineCode}.json${authQuery}`, {
                         method: 'PUT', headers: { 'Content-Type': 'application/json' },
