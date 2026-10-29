@@ -28,16 +28,12 @@ export default async function handler(req, res) {
 
     try {
         if (action === "create_order") {
-            // Added new coupon and discount fields to the request
             const { userId, planAmount, finalAmount, planType, txType, couponCode, discountAmount, daylineCode } = req.body;
-            
-            // If Sketchware sends an orderId, use it. Otherwise, generate one.
             const orderId = req.body.orderId || generateOrderId(); 
             const nowIso = new Date().toISOString();
             const activeDaylineCode = daylineCode || "UNKNOWN_CODE";
             const actualTxType = txType || "New Purchase";
 
-            // UPDATED: Comprehensive Transaction Payload
             const initialData = {
                 orderId: orderId,
                 userId: userId,
@@ -64,6 +60,11 @@ export default async function handler(req, res) {
                 fetch(`${dbUrl}Daylinecode_transactions/${activeDaylineCode}/${orderId}.json${authQuery}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(initialData) })
             ]);
             
+            // CRITICAL FIX: Dynamically route the return URL back to your HTML page for verification
+            const host = req.headers.host || "your-domain.vercel.app";
+            const protocol = req.headers['x-forwarded-proto'] || "https";
+            const secureReturnUrl = `${protocol}://${host}/process_payment_2.html?verify_bounce=true&order_id={order_id}`;
+
             const cfResponse = await fetch(CF_ENV_URL, {
                 method: "POST",
                 headers: {
@@ -73,7 +74,7 @@ export default async function handler(req, res) {
                 body: JSON.stringify({
                     order_id: orderId, order_amount: parseFloat(finalAmount || planAmount), order_currency: "INR",
                     customer_details: { customer_id: userId, customer_phone: "9999999999" },
-                    order_meta: { return_url: "https://your-domain.com/success?order_id={order_id}" }
+                    order_meta: { return_url: secureReturnUrl }
                 })
             });
 
@@ -82,9 +83,9 @@ export default async function handler(req, res) {
             if (cfData.payment_session_id) {
                 const pendingUpdates = { status: "PENDING", gatewayStatus: "PENDING", lastUpdatedAt: new Date().toISOString() };
                 await Promise.all([
-                    fetch(`${dbUrl}transactions/${userId}/${orderId}.json${authQuery}`, { method: 'PATCH', body: JSON.stringify(pendingUpdates) }),
-                    fetch(`${dbUrl}mytransactions/${userId}/${orderId}.json${authQuery}`, { method: 'PATCH', body: JSON.stringify(pendingUpdates) }),
-                    fetch(`${dbUrl}Daylinecode_transactions/${activeDaylineCode}/${orderId}.json${authQuery}`, { method: 'PATCH', body: JSON.stringify(pendingUpdates) })
+                    fetch(`${dbUrl}transactions/${userId}/${orderId}.json${authQuery}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(pendingUpdates) }),
+                    fetch(`${dbUrl}mytransactions/${userId}/${orderId}.json${authQuery}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(pendingUpdates) }),
+                    fetch(`${dbUrl}Daylinecode_transactions/${activeDaylineCode}/${orderId}.json${authQuery}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(pendingUpdates) })
                 ]);
                 return res.status(200).json({ status: "success", payment_session_id: cfData.payment_session_id, order_id: orderId });
             } else {
@@ -93,7 +94,6 @@ export default async function handler(req, res) {
         }
 
        else if (action === "finalize_payment") {
-            // 1. EXTRACT paymentStatus SENT FROM THE FRONTEND
             const { orderId, userId, planType, txType, amountPaid, daylineCode, frontendRemarks, paymentStatus } = req.body;
             const nowIso = new Date().toISOString();
             const activeDaylineCode = daylineCode || "UNKNOWN_CODE";
@@ -101,14 +101,12 @@ export default async function handler(req, res) {
             let secureStatus = "FAILED";
             let gatewayRemarks = frontendRemarks || "Transaction Failed";
 
-            // 2. IF FRONTEND SAYS FAILED (User cancelled / Wrong PIN), MARK AS FAILED.
             if (paymentStatus === "FAILED") {
                 secureStatus = "FAILED";
             } else {
-                // 3. IF SUCCESSFUL, GIVE CASHFREE 2 SECONDS TO SYNC THEIR SERVERS
+                // Give Cashfree 2 seconds to sync their servers before we check
                 await new Promise(resolve => setTimeout(resolve, 2000));
 
-                // 4. NOW SECURELY VERIFY WITH CASHFREE
                 const cfVerifyResponse = await fetch(`${CF_ENV_URL}/${orderId}`, {
                     method: "GET",
                     headers: {
@@ -122,7 +120,6 @@ export default async function handler(req, res) {
                     secureStatus = "SUCCESS";
                     gatewayRemarks = "Payment processed successfully.";
                 } else if (cfVerifyData.order_status === "ACTIVE") {
-                    // Order is still active, meaning the bank is genuinely delaying the confirmation
                     secureStatus = "PENDING";
                     gatewayRemarks = "Payment is pending at gateway.";
                 } else {
@@ -135,7 +132,6 @@ export default async function handler(req, res) {
                 }
             }
 
-            // 5. UPDATE TRANSACTION HISTORY (mytransactions)
             const finalUpdates = {
                 status: secureStatus, 
                 gatewayStatus: secureStatus, 
@@ -144,22 +140,19 @@ export default async function handler(req, res) {
             };
 
             await Promise.all([
-                fetch(`${dbUrl}transactions/${userId}/${orderId}.json${authQuery}`, { method: 'PATCH', body: JSON.stringify(finalUpdates) }),
-                fetch(`${dbUrl}mytransactions/${userId}/${orderId}.json${authQuery}`, { method: 'PATCH', body: JSON.stringify(finalUpdates) }),
-                fetch(`${dbUrl}Daylinecode_transactions/${activeDaylineCode}/${orderId}.json${authQuery}`, { method: 'PATCH', body: JSON.stringify(finalUpdates) })
+                fetch(`${dbUrl}transactions/${userId}/${orderId}.json${authQuery}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(finalUpdates) }),
+                fetch(`${dbUrl}mytransactions/${userId}/${orderId}.json${authQuery}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(finalUpdates) }),
+                fetch(`${dbUrl}Daylinecode_transactions/${activeDaylineCode}/${orderId}.json${authQuery}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(finalUpdates) })
             ]);
 
-            // 6. ONLY UPGRADE IF SECURE STATUS IS SUCCESS
             if (secureStatus === "SUCCESS") {
                 const cleanPlan = (planType || "MONTHLY").toUpperCase(); 
                 let expiryDate = new Date();
                 let finalPlanAmount = parseFloat(amountPaid) || 0;
 
-                // Proration/Top-up Math
                 if (txType === "Top-up") {
                     const planRes = await fetch(`${dbUrl}Active_plan/${userId}.json${authQuery}`);
                     const currentPlan = await planRes.json() || {};
-                    
                     let baseExpiry = currentPlan.expiry_date ? new Date(parseInt(currentPlan.expiry_date)) : new Date();
                     if (baseExpiry.getTime() < Date.now()) baseExpiry = new Date();
                     
@@ -174,30 +167,18 @@ export default async function handler(req, res) {
                     else expiryDate.setDate(expiryDate.getDate() + 30);
                 }
 
-                // UPDATE USERS NODE
                 await fetch(`${dbUrl}users/${userId}.json${authQuery}`, {
                     method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        isPremium: true, 
-                        current_plan: cleanPlan, 
-                        premiumActivatedAt: nowIso 
-                    })
+                    body: JSON.stringify({ isPremium: true, current_plan: cleanPlan, premiumActivatedAt: nowIso })
                 });
 
-                // UPDATE ACTIVE_PLAN NODE 
                 await fetch(`${dbUrl}Active_plan/${userId}.json${authQuery}`, {
                     method: 'PUT', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        uid: userId, 
-                        amount: finalPlanAmount, 
-                        expiry_date: expiryDate.getTime().toString(), 
-                        plan_type: cleanPlan, 
-                        premium_purchase_date: nowIso,
-                        lastpaymentid: orderId 
+                        uid: userId, amount: finalPlanAmount, expiry_date: expiryDate.getTime().toString(), plan_type: cleanPlan, premium_purchase_date: nowIso, lastpaymentid: orderId 
                     })
                 });
 
-                // Clear generated codes if used
                 if (activeDaylineCode !== "UNKNOWN_CODE") {
                     await fetch(`${dbUrl}used_codes/${userId}/${activeDaylineCode}.json${authQuery}`, {
                         method: 'PUT', headers: { 'Content-Type': 'application/json' },
@@ -206,7 +187,6 @@ export default async function handler(req, res) {
                     await fetch(`${dbUrl}generated_codes/${activeDaylineCode}.json${authQuery}`, { method: 'DELETE' });
                 }
 
-                // Push Notification Entry
                 const notificationId = `notif_${Date.now()}`;
                 await fetch(`${dbUrl}notifications/${userId}/${notificationId}.json${authQuery}`, {
                     method: 'PUT', headers: { 'Content-Type': 'application/json' },
