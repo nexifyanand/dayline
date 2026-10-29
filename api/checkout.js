@@ -63,7 +63,7 @@ export default async function handler(req, res) {
             // CRITICAL FIX: Dynamically route the return URL back to your HTML page for verification
             const host = req.headers.host || "your-domain.vercel.app";
             const protocol = req.headers['x-forwarded-proto'] || "https";
-            const secureReturnUrl = `${protocol}://${host}/process_payment_2.html?verify_bounce=true&order_id={order_id}`;
+            const secureReturnUrl = `${protocol}://${host}/process_payment.html?verify_bounce=true&order_id={order_id}`;
 
             const cfResponse = await fetch(CF_ENV_URL, {
                 method: "POST",
