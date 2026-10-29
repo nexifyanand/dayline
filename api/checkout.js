@@ -60,7 +60,7 @@ export default async function handler(req, res) {
                 fetch(`${dbUrl}Daylinecode_transactions/${activeDaylineCode}/${orderId}.json${authQuery}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(initialData) })
             ]);
             
-            // CRITICAL FIX: Dynamically route the return URL back to your HTML page for verification
+            // CORRECTED: Points exactly to your actual process_payment.html file
             const host = req.headers.host || "your-domain.vercel.app";
             const protocol = req.headers['x-forwarded-proto'] || "https";
             const secureReturnUrl = `${protocol}://${host}/process_payment.html?verify_bounce=true&order_id={order_id}`;

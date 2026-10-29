@@ -31,13 +31,10 @@
     <h2 id="statusText">Securely Fetching Order...</h2>
     <p id="subText">Please do not close this window or press back.</p>
 
-    <!-- MUST be type="module" to use Firebase -->
     <script type="module">
-        // 1. IMPORT FIREBASE V10 SDK
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
         import { getDatabase, ref, get, child } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
-        // Your exact Firebase config
         const firebaseConfig = {
             apiKey: "AIzaSyBOE4ivTCo_-Ap818kPjc6qXzNJ4f202Sk",
             databaseURL: "https://dayline-nexify-default-rtdb.firebaseio.com",
@@ -49,11 +46,10 @@
         const cashfree = Cashfree({ mode: "sandbox" }); 
         const CHECKOUT_API_URL = "/api/checkout"; 
 
-        // 2. EXTRACT ONLY THE ORDER ID FROM URL
         const params = new URLSearchParams(window.location.search);
         const orderId = params.get('order_id');
+        const isBounce = params.get('verify_bounce'); // Checks if returning from UPI
 
-        // UI HELPER: Replaces freezing Javascript Alerts with smooth UI animations
         function triggerRedirect(status, message) {
             document.getElementById('loadingSpinner').style.display = 'none';
             const icon = document.getElementById('statusIcon');
@@ -66,13 +62,13 @@
                 title.innerHTML = 'Payment Successful!';
                 title.className = 'success-text';
                 sub.innerText = "Redirecting to app...";
-                setTimeout(() => { window.location.href = "/success"; }, 1500); // Triggers Sketchware to close
+                setTimeout(() => { window.location.href = "/success"; }, 1500); 
             } else {
                 icon.innerHTML = '❌';
                 title.innerHTML = 'Payment Failed';
                 title.className = 'error-text';
                 sub.innerText = message + "\nReturning to checkout...";
-                setTimeout(() => { window.location.href = "/failed"; }, 2500); // Triggers Sketchware to close
+                setTimeout(() => { window.location.href = "/failed"; }, 2500); 
             }
         }
 
@@ -82,8 +78,39 @@
                 return;
             }
 
+            // --- THE CRITICAL FIX: PREVENT DUPLICATE ORDER CREATION ---
+            if (isBounce === "true") {
+                try {
+                    document.getElementById('statusText').innerText = "Finalizing Transaction...";
+                    const dbRef = ref(db);
+                    const orderSnap = await get(child(dbRef, `Pending_Orders/${orderId}`));
+                    const orderData = orderSnap.val();
+
+                    // Skip create_order and go STRAIGHT to finalize_payment
+                    await fetch(CHECKOUT_API_URL, {
+                        method: "POST", headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            action: "finalize_payment",
+                            orderId: orderId,
+                            userId: orderData.uid,
+                            planType: orderData.plan,
+                            txType: orderData.paymentType || "New Purchase",
+                            amountPaid: orderData.final_price,
+                            paymentStatus: "VERIFY", // Tell backend to check with Cashfree
+                            frontendRemarks: "Redirected from Gateway"
+                        })
+                    });
+                    
+                    triggerRedirect("SUCCESS", "Payment Verified");
+                } catch(err) {
+                    triggerRedirect("FAILED", err.message);
+                }
+                return; // Stop execution here so it doesn't run create_order below!
+            }
+            // -----------------------------------------------------------
+
             try {
-                // 3. SECURELY FETCH ORDER DETAILS FROM FIREBASE DB
+                // NORMAL CHECKOUT START
                 const dbRef = ref(db);
                 const orderSnap = await get(child(dbRef, `Pending_Orders/${orderId}`));
                 
@@ -94,7 +121,6 @@
                 const orderData = orderSnap.val();
                 document.getElementById('statusText').innerText = "Initiating Gateway...";
 
-                // 4. SEND EXTRACTED DATA TO YOUR EXISTING BACKEND
                 const response = await fetch(CHECKOUT_API_URL, {
                     method: "POST", headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
@@ -115,10 +141,9 @@
 
                 document.getElementById('statusText').innerText = "Awaiting Payment...";
                 
-                // 5. LAUNCH CASHFREE
                 cashfree.checkout({
                     paymentSessionId: data.payment_session_id,
-                    redirectTarget: "_modal"
+                    redirectTarget: "_self" // Required by Cashfree for UPI bounces
                 }).then(async (result) => {
                     document.getElementById('statusText').innerText = "Verifying Transaction...";
                     
@@ -133,7 +158,6 @@
                         remarks = "Payment processed successfully.";
                     }
 
-                    // 6. FINALIZE PAYMENT VIA YOUR EXISTING BACKEND
                     await fetch(CHECKOUT_API_URL, {
                         method: "POST", headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ 
@@ -148,7 +172,6 @@
                         })
                     });
 
-                    // 7. REDIRECT BACK TO APP
                     triggerRedirect(finalStatus, remarks);
                 });
 
@@ -157,7 +180,6 @@
             }
         }
 
-        // Start process automatically
         startPayment();
     </script>
 </body>
